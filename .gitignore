@@ -1,0 +1,31 @@
+# Environments
+.env
+venv/
+env/
+*.sqlite3
+db.sqlite3
+
+# Backend
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.eslintcache
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE-related
+.vscode/
+.idea/
+*.swp
