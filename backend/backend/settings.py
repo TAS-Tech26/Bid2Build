@@ -12,18 +12,24 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 
+import environ, os
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env(DEBUG = (bool, False))
+
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-45i_!hx9jdre!&1emktv(g7br=(7wykrb8belbas7pw(b55pr@'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = []
 
@@ -74,16 +80,7 @@ ASGI_APPLICATION = 'backend.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'b2b',
-        'USER' : 'Sriman',
-        'PASSWORD' : 'SpitterDune#891*',
-        'HOST' : '127.0.0.1',
-        'PORT' : '5432',
-    }
-}
+DATABASES = {'default' : env.db()}
 
 
 # Password validation
@@ -127,7 +124,7 @@ CHANNEL_LAYERS = {
     'default' : {
         'BACKEND' : 'channels_redis.core.RedisChannelLayer',
         'CONFIG' : {
-            'hosts' : [('127.0.0.1', 6379)] # Local Redis instance
+            'hosts' : [('127.0.0.1', 6380)] # Local Redis instance
         }
     }
 }

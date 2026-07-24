@@ -54,3 +54,15 @@ class Technology(models.Model):
     def __str__(self):
 
         return f"{self.name} - {self.status}"
+
+
+class AuctionParticipant(models.Model):
+
+    is_active = models.BooleanField(default = True) # False means they clicked "Back Out"
+
+    team = models.ForeignKey(Team, on_delete = models.CASCADE)
+    technology = models.ForeignKey(Technology, on_delete = models.CASCADE)
+
+    class Meta:
+
+        unique_together = ('team', 'technology')
