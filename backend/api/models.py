@@ -34,7 +34,7 @@ class Technology(models.Model):
     current_highest_bid = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     end_time = models.DateTimeField(null = True, blank = True)
 
-    highest_bidder = models.ForeignKey(Team, null = True, blank = True, on_delete = models.SET_NULL, related_name = 'bids')
+    highest_bidder = models.ForeignKey(Team, null = True, blank = True, on_delete = models.SET_NULL, related_name = 'won_technologies')
 
     class Meta:
 
@@ -61,3 +61,16 @@ class AuctionParticipant(models.Model):
     class Meta:
 
         unique_together = ('team', 'technology')
+
+
+class BidLog(models.Model):
+
+    bid_amount = models.DecimalField(max_digits = 10, decimal_places = 2)
+    timestamp = models.DateTimeField(auto_now_add = True, db_index = True)
+
+    team = models.ForeignKey(Team, on_delete = models.CASCADE)
+    technology = models.ForeignKey(Technology, on_delete = models.CASCADE, related_name = 'bid_history')
+
+    class Meta:
+
+        ordering = ['-timestamp']

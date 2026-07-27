@@ -5,7 +5,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction, OperationalError
 from django.utils import timezone
 
-from .models import AuctionParticipant, Team, Technology
+from .models import AuctionParticipant, BidLog, Team, Technology
 from .redis_service import RedisService
 
 import logging
@@ -74,6 +74,8 @@ class BidHandler:
                 tech.highest_bidder = team
                 tech.end_time = timezone.now() + timedelta(seconds = 15)
                 tech.save()
+
+                BidLog.objects.create(technology = tech, team = team, bid_amount = bid_amount)
 
                 # Explicitly wait for Postgres to confirm the commit before hitting Redis
                 transaction.on_commit(lambda: RedisService.broadcast_new_bid(tech_id = tech_id, bid_amount = str(bid_amount), team_name = team.name))
