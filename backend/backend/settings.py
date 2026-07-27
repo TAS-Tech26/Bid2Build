@@ -80,7 +80,11 @@ ASGI_APPLICATION = 'backend.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {'default' : env.db()}
+DATABASES = {
+    'default': {
+        'default' : env.db()
+    }
+}
 
 
 # Password validation
