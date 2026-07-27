@@ -76,7 +76,7 @@ class BidHandler:
                 tech.save()
 
                 # Explicitly wait for Postgres to confirm the commit before hitting Redis
-                transaction.on_commit(lambda : RedisService.broadcast_new_bid(tech_id = tech_id, bid_amount = str(bid_amount), team_name = team.name))
+                transaction.on_commit(lambda: RedisService.broadcast_new_bid(tech_id = tech_id, bid_amount = str(bid_amount), team_name = team.name))
 
                 return True, "Bid successfully placed."
         except Technology.DoesNotExist:
@@ -100,3 +100,76 @@ class BidHandler:
             logger.error(f"System error during bid processing: {str(e)}")
             
             return False, f"System error: {str(e)}"
+
+
+class ParticipantHandler:
+
+    @staticmethod
+    def join_auction(team_id, tech_id):
+        try:
+            with transaction.atomic():
+                tech = Technology.objects.get(id = tech_id)
+
+                team = Team.objects.get(id = team_id)
+
+                if tech.status != 'ACTIVE':
+
+                    return False, "This auction isn't active."
+
+                participant, created = AuctionParticipant.objects.get_or_create(team = team, technology = tech, defaults = {'is_active' : True})
+
+                if not created and not participant.is_active:
+
+                    return False, "You have permanently backed out of this auction & cannot return."
+
+                if created:
+                    transaction.on_commit(lambda: RedisService.broadcast_participant_update(tech_id = tech_id, team_name = team.name, status = 'JOINED'))
+
+                return True, "Successfully joined the auction."
+        except Technology.DoesNotExist:
+
+            return False, "Technology not found."
+
+        except Team.DoesNotExist:
+
+            return False, "Team not found."
+
+        except Exception as e:
+            logger.error(f"Error joining auction: {str(e)}")
+
+            return False, "System error."
+
+    @staticmethod
+    def back_out_auction(team_id, tech_id):
+        try:
+            with transaction.atomic():
+                tech = Technology.objects.select_for_update().get(id = tech_id)
+
+                if tech.highest_bidder_id == team_id:
+
+                    return False, "You cannot back out while holding the highest bid."
+
+                participant = AuctionParticipant.objects.select_for_update().get(team_id = team_id, technology_id = tech_id)
+
+                if not participant.is_active:
+
+                    return False, "You have already backed out."
+
+                participant.is_active = False
+                participant.save()
+
+                transaction.on_commit(lambda: RedisService.broadcast_participant_update(tech_id = tech_id, team_name = participant.team.name, status = 'BACKED_OUT'))
+
+                return True, "Successfully backed out of the auction."
+        except Technology.DoesNotExist:
+
+            return False, "Technology not found."
+
+        except AuctionParticipant.DoesNotExist:
+
+            return False, "You are not an active participant in this auction."
+
+        except Exception as e:
+            logger.error(f"Error backing out of the auction: {str(e)}")
+
+            return False, "System error."

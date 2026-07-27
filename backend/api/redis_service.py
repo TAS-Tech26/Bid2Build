@@ -17,3 +17,14 @@ class RedisService:
             f'tech_{tech_id}',
             {'type' : 'bid_update', 'payload' : {'tech_id' : tech_id, 'new_highest_bid' : bid_amount, 'highest_bidder_name' : team_name}}
         )
+
+    @staticmethod
+    def broadcast_participant_update(tech_id, team_name, status):
+        """Pushes state changes for participants entering/exiting the room."""
+
+        channel_layer = get_channel_layer()
+
+        async_to_sync(channel_layer.group_send)(
+            f'tech_{tech_id}',
+            {'type' : 'participant_update', 'payload' : {'tech_id' : tech_id, 'team_name' : team_name, 'status' : status}}
+        )

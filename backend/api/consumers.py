@@ -22,3 +22,6 @@ class BidConsumer(AsyncWebsocketConsumer):
     # This func is called by RedisService
     async def bid_update(self, event):
         await self.send(text_data = json.dumps({'type' : 'bid_update', 'data' : event['payload']}))
+
+    async def participant_update(self, event):
+        await self.send(text_data = json.dumps({'type' : 'participant_update', 'data' : event['payload']}))

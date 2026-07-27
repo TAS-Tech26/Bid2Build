@@ -20,11 +20,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from api import views
+from api.views import back_out_auction_view, join_auction_view, place_bid_view
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path('api/bid/', views.place_bid_view, name = 'place_bid')
+    path('api/bid/', place_bid_view, name = 'place_bid'),
+    path('api/join/', join_auction_view, name = 'join_auction'),
+    path('api/back-out/', back_out_auction_view, name = 'back_out_auction')
 ]

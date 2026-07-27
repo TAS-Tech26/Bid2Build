@@ -25,12 +25,7 @@ class Team(models.Model):
 
 class Technology(models.Model):
 
-    STATUS_CHOICES = [
-        ('QUEUED', 'Queued'),
-        ('ACTIVE', 'Active'),
-        ('SOLD', 'Sold'),
-        ('UNSOLD', 'Unsold'),
-    ]
+    STATUS_CHOICES = [('QUEUED', 'Queued'), ('ACTIVE', 'Active'), ('SOLD', 'Sold'), ('UNSOLD', 'Unsold')]
 
     name = models.CharField(max_length = 255)
     description = models.TextField(blank = True)
