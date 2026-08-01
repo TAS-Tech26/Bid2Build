@@ -43,6 +43,7 @@ class TechnologyAdmin(admin.ModelAdmin):
 
 @admin.register(AuctionParticipant)
 class AuctionParticipantAdmin(admin.ModelAdmin):
+    
     list_display = ('team', 'technology', 'is_active')
     list_filter = ('is_active', 'technology')
     search_fields = ('team__name', 'technology__name')
