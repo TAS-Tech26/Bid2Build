@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class BidHandler:
 
     @staticmethod
-    def process_transaction(team_id, tech_id, bid_amount):
+    def process_transaction(team_code, tech_id, bid_amount):
         try:
             with transaction.atomic():
                 # Lock target tech for bidding
@@ -40,7 +40,7 @@ class BidHandler:
                     return False, "Bid must be strictly higher than the current highest bid."
 
                 # Lock bidder
-                team = Team.objects.select_for_update().get(id = team_id)
+                team = Team.objects.select_for_update().get(team_code = team_code)
 
                 if tech.highest_bidder_id == team.id:
 
@@ -77,8 +77,15 @@ class BidHandler:
 
                 BidLog.objects.create(technology = tech, team = team, bid_amount = bid_amount)
 
+                end_time_iso = tech.end_time.isoformat()
+
                 # Explicitly wait for Postgres to confirm the commit before hitting Redis
-                transaction.on_commit(lambda: RedisService.broadcast_new_bid(tech_id = tech_id, bid_amount = str(bid_amount), team_name = team.name))
+                transaction.on_commit(lambda: RedisService.broadcast_new_bid(
+                    tech_id = tech_id,
+                    bid_amount = str(bid_amount),
+                    team_name = team.name,
+                    end_time = end_time_iso
+                ))
 
                 return True, "Bid successfully placed."
         except Technology.DoesNotExist:
@@ -107,12 +114,12 @@ class BidHandler:
 class ParticipantHandler:
 
     @staticmethod
-    def join_auction(team_id, tech_id):
+    def join_auction(team_code, tech_id):
         try:
             with transaction.atomic():
                 tech = Technology.objects.get(id = tech_id)
 
-                team = Team.objects.get(id = team_id)
+                team = Team.objects.get(team_code = team_code)
 
                 if tech.status != 'ACTIVE':
 
@@ -142,16 +149,18 @@ class ParticipantHandler:
             return False, "System error."
 
     @staticmethod
-    def back_out_auction(team_id, tech_id):
+    def back_out_auction(team_code, tech_id):
         try:
             with transaction.atomic():
                 tech = Technology.objects.select_for_update().get(id = tech_id)
 
-                if tech.highest_bidder_id == team_id:
+                team = Team.objects.get(team_code = team_code)
+
+                if tech.highest_bidder_id == team.id:
 
                     return False, "You cannot back out while holding the highest bid."
 
-                participant = AuctionParticipant.objects.select_for_update().get(team_id = team_id, technology_id = tech_id)
+                participant = AuctionParticipant.objects.select_for_update().get(team = team, technology_id = tech_id)
 
                 if not participant.is_active:
 

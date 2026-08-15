@@ -1,17 +1,23 @@
 # views.py
 
 
+from datetime import timedelta
+
 from django.conf import settings
-from django.db import transaction, IntegrityError
+from django.db import transaction
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
+
+from .redis_service import RedisService
 
 from .handlers import BidHandler, ParticipantHandler
 from .models import AuctionParticipant, BidLog, Team, Technology
 from .serializers import BidSerializer, LeaderboardSerializer, ParticipantActionSerializer, TechnologySerializer
 
 import json, hmac, requests
+
 
 @csrf_exempt # Remove this when proper frontend auth has been est.
 @require_POST
@@ -23,16 +29,9 @@ def place_bid_view(request):
         return JsonResponse({'error' : serializer.errors}, status = 400)
 
     data = serializer.validated_data
+    success, message = BidHandler.process_transaction(team_code = data['team_code'], tech_id = data['tech_id'], bid_amount = data['bid_amount'])
 
-    success, message = BidHandler.process_transaction(team_id = data['team_id'], tech_id = data['tech_id'], bid_amount = data['bid_amount'])
-
-    if success:
-
-        return JsonResponse({'message' : message}, status = 200)
-
-    else:
-
-        return JsonResponse({'error' : message}, status = 400)
+    return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @csrf_exempt
 @require_POST
@@ -44,15 +43,9 @@ def join_auction_view(request):
         return JsonResponse({'error' : serializer.errors}, status = 400)
 
     data = serializer.validated_data
-    success, message = ParticipantHandler.join_auction(team_id = data['team_id'], tech_id = data['tech_id'])
+    success, message = ParticipantHandler.join_auction(team_code = data['team_code'], tech_id = data['tech_id'])
 
-    if success:
-
-        return JsonResponse({'message' : message}, status = 200)
-
-    else:
-
-        return JsonResponse({'error' : message}, status = 400)
+    return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @csrf_exempt
 @require_POST
@@ -64,15 +57,9 @@ def back_out_auction_view(request):
         return JsonResponse({'error' : serializer.errors}, status = 400)
 
     data = serializer.validated_data
-    success, message = ParticipantHandler.back_out_auction(team_id = data['team_id'], tech_id = data['tech_id'])
+    success, message = ParticipantHandler.back_out_auction(team_code = data['team_code'], tech_id = data['tech_id'])
 
-    if success:
-
-        return JsonResponse({'message' : message}, status = 200)
-
-    else:
-
-        return JsonResponse({'error' : message}, status = 400)
+    return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @require_GET
 def get_all_technologies_view(request):
@@ -142,6 +129,39 @@ def sync_wallets_view(request):
 
 @csrf_exempt
 @require_POST
+def start_auction_view(request, tech_id):
+    """Host endpoint to start an auction & the global clock."""
+
+    provided = request.headers.get('X-Host-Secret')
+    expected = settings.B2B_HOST_SECRET
+
+    if not expected or not hmac.compare_digest(provided, expected):
+
+        return JsonResponse({'error' : "Unauthorized admin action."}, status = 403)
+
+    try:
+        with transaction.atomic():
+            tech = Technology.objects.select_for_update().get(id = tech_id)
+
+            if tech.status != 'QUEUED':
+
+                return JsonResponse({'error' : f"Cannot start auction. Current status is {tech.status}"}, status = 400)
+
+            tech.status = 'ACTIVE'
+            tech.end_time = timezone.now() + timedelta(minutes = 2)
+            tech.save(update_fields = ['status', 'end_time'])
+
+            end_time_iso = tech.end_time.isoformat()
+
+            transaction.on_commit(lambda: RedisService.broadcast_auction_started(tech_id = tech.id, end_time = end_time_iso))
+
+        return JsonResponse({'message' : f"Auction for tech {tech_id} started successfully.", 'end_time' : end_time_iso}, status = 200)
+    except Technology.DoesNotExist:
+
+        return JsonResponse({'error' : "Technology not found."}, status = 404)
+
+@csrf_exempt
+@require_POST
 def push_final_results_view(request):
     """Master trigger to push final auction results to the hub."""
 
@@ -183,3 +203,42 @@ def push_final_results_view(request):
     except requests.exceptions.RequestException as e:
 
         return JsonResponse({'error' : f"Network error contacting Hub: {str(e)}"}, status = 503)
+
+@csrf_exempt
+@require_POST
+def emergency_reset_auction_view(request, tech_id):
+    """Admin endpoint to reset an auction in case of critical issues."""
+
+    provided = request.headers.get('X-Host-Secret')
+    expected = settings.B2B_HOST_SECRET
+
+    if not expected or not hmac.compare_digest(provided, expected):
+
+        return JsonResponse({'error' : "Unauthorized admin action."}, status = 403)
+
+    try:
+        with transaction.atomic():
+            tech = Technology.objects.select_for_update().get(id = tech_id)
+
+            if tech.status not in ['ACTIVE', 'QUEUED']:
+
+                return JsonResponse({'error' : f"Can only reset auctions that are active or queued."}, status = 400)
+
+            if tech.highest_bidder:
+                bidder = Team.objects.select_for_update().get(id = tech.highest_bidder.id)
+                bidder.available_credits += tech.current_highest_bid
+                bidder.escrow_credits -= tech.current_highest_bid
+                bidder.save(update_fields = ['available_credits', 'escrow_credits'])
+
+            tech.status = 'QUEUED'
+            tech.current_highest_bid = 0.00
+            tech.highest_bidder = None
+            tech.end_time = None
+            tech.save()
+
+            RedisService.broadcast_auction_ended(tech_id = tech.id, status = 'ABORTED', winner_name = None)
+
+        return JsonResponse({'message' : "Auction aborted & all escrow refunded"}, status = 200)
+    except Technology.DoesNotExist:
+
+        return JsonResponse({'error' : "Technology not found."}, status = 404)

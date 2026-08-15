@@ -17,16 +17,16 @@ class BidSerializer:
     def _parse_and_validate(self, body):
         try:
             data = json.loads(body)
-            team_id = data.get('team_id')
+            team_code = data.get('team_code')
             tech_id = data.get('tech_id')
             bid_amount_str = data.get('bid_amount')
 
-            if not all([team_id, tech_id, bid_amount_str]):
+            if not all([team_code, tech_id, bid_amount_str]):
                 self.errors = "Missing required fields."
 
                 return
 
-            self.validated_data = {'team_id' : int(team_id), 'tech_id' : int(tech_id), 'bid_amount' : Decimal(str(bid_amount_str))}
+            self.validated_data = {'team_code' : str(team_code), 'tech_id' : int(tech_id), 'bid_amount' : Decimal(str(bid_amount_str))}
         except (json.JSONDecodeError, ValueError, InvalidOperation):
             self.errors = "Invalid payload format."
 
@@ -46,15 +46,15 @@ class ParticipantActionSerializer:
     def _parse_and_validate(self, body):
         try:
             data = json.loads(body)
-            team_id = data.get('team_id')
+            team_code = data.get('team_code')
             tech_id = data.get('tech_id')
 
-            if not all([team_id, tech_id]):
-                self.errors = "Missing required fields: team_id, tech_id"
+            if not all([team_code, tech_id]):
+                self.errors = "Missing required fields: team_code, tech_id"
 
                 return
 
-            self.validated_data = {'team_id' : int(team_id), 'tech_id' : int(tech_id)}
+            self.validated_data = {'team_code' : str(team_code), 'tech_id' : int(tech_id)}
         except (json.JSONDecodeError, ValueError):
             self.errors = "Invalid payload format."
 
