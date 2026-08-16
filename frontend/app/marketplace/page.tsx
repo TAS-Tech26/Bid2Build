@@ -224,22 +224,32 @@ function TimerBox({
 export default function MarketplacePage() {
   const router = useRouter();
   const [credits, setCredits] = useState("1150");
-
+  const [teamName, setTeamName] = useState("");
   // Per-auction countdown timers (keyed by id)
   const [timers, setTimers] = useState<Record<number, number>>(() =>
     Object.fromEntries(AUCTIONS_SEED.map((a) => [a.id, a.endsInSeconds]))
   );
 
   useEffect(() => {
-    if (!localStorage.getItem("teamName")) {
+    const token = localStorage.getItem("token");
+    const storedTeam = localStorage.getItem("team");
+    if (!storedTeam) {
       router.push("/login");
+      return;
     }
-    const storedCredits = localStorage.getItem("credits");
-    if (storedCredits) {
-      setCredits(storedCredits);
-    } else {
-      localStorage.setItem("credits", "1150");
-      setCredits("1150");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    try{
+      const team = JSON.parse(storedTeam);
+      setTeamName(team.name);
+    }
+    catch(error){
+      console.log("Invalid team data", error);
+      localStorage.removeItem("team");
+      localStorage.removeItem("token");
+      router.push("/login");
     }
   }, [router]);
 

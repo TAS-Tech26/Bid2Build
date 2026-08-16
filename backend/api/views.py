@@ -19,15 +19,11 @@ from .serializers import BidSerializer, LeaderboardSerializer, ParticipantAction
 import json, hmac, requests
 
 
-@csrf_exempt # Remove this when proper frontend auth has been est.
-@require_POST
+@api_view(['POST'])
 def place_bid_view(request):
-    serializer = BidSerializer(request.body)
-
+    serializer = BidSerializer(data=request.data)
     if not serializer.is_valid():
-
         return JsonResponse({'error' : serializer.errors}, status = 400)
-
     data = serializer.validated_data
     success, message = BidHandler.process_transaction(team_code = data['team_code'], tech_id = data['tech_id'], bid_amount = data['bid_amount'])
 

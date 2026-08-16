@@ -5,7 +5,6 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 import json
 
-
 class BidConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):

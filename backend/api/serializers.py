@@ -2,13 +2,17 @@
 
 
 from decimal import Decimal, InvalidOperation
-
 import json
+from rest_framework import serializers
 
 
-class BidSerializer:
+class BidSerializer(serializers.Serializer):
 
-    def __init__(self, request_body):
+    team_id = serializers.IntegerField()
+    tech_id = serializers.IntegerField()    
+    bid_amount = serializers.DecimalField(max_digits=6, decimal_places=2)
+    
+    '''def __init__(self, request_body):
         self.errors = None
         self.validated_data = None
 

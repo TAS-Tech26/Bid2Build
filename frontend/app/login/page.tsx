@@ -1,38 +1,94 @@
 "use client";
 
+import api from "../services/api";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [teamName, setTeamName] = useState("");
+  const [username, setusername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const router = useRouter();
 
-  const handleLogin = () => {
-    if (!teamName.trim() || !password.trim()) {
-      setError("Please enter both team name and password.");
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password.");
       return;
     }
 
     setError("");
 
-    // Save team details
-    localStorage.setItem("teamName", teamName);
+    try{
+      const response=await api.post("login/",{
+        username:username,
+        password:password,
+      });
 
-    console.log(
-      {
-        teamName,
-        password,
-      },
-      "login successful"
+      console.log(
+      "login successful",
+      response.data
     );
 
-    router.push("/stu_dashboard");
-  };
+      localStorage.setItem('token', response.data.token); //To be commented later during deployment
+      localStorage.setItem('team', JSON.stringify(response.data.team));
 
+      router.push("/stu_dashboard");
+    }
+    catch (error: any) {
+
+      console.log("LOGIN FAILED:", error);
+
+      if (error.response) {
+
+          console.log(
+              "STATUS:",
+              error.response.status
+          );
+
+          console.log(
+              "DATA:",
+              error.response.data
+          );
+
+          if (error.response.status === 401) {
+
+              setError(
+                  "Invalid username or password."
+              );
+
+          } else {
+
+              setError(
+                  "Server error. Please try again."
+              );
+          }
+
+      } else if (error.request) {
+
+          console.log(
+              "No response received from Django:",
+              error.request
+          );
+
+          setError(
+              "Could not connect to the backend server."
+          );
+
+      } else {
+
+          console.log(
+              "Request error:",
+              error.message
+          );
+
+          setError(
+              "An unexpected error occurred."
+          );
+      }
+    }
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#070B18] text-white flex items-center justify-center px-6">
@@ -150,9 +206,9 @@ export default function LoginPage() {
 
           <input
             type="text"
-            placeholder="Team Name"
-            value={teamName}
-            onChange={(e)=>setTeamName(e.target.value)}
+            placeholder="Username"
+            value={username}
+            onChange={(e)=>setusername(e.target.value)}
             className="
             w-full
             p-4
