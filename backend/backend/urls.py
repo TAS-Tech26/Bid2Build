@@ -26,5 +26,6 @@ from api import views
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path('api/bid/', views.place_bid_view, name = 'place_bid')
+    path('api/bid/', views.place_bid_view, name = 'place_bid'),
+    path('api/login/', views.login, name = 'login')
 ]
