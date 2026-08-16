@@ -22,3 +22,16 @@ class BidConsumer(AsyncWebsocketConsumer):
     # This func is called by RedisService
     async def bid_update(self, event):
         await self.send(text_data = json.dumps({'type' : 'bid_update', 'data' : event['payload']}))
+
+    async def participant_update(self, event):
+        await self.send(text_data = json.dumps({'type' : 'participant_update', 'data' : event['payload']}))
+
+    async def auction_ended(self, event):
+        """Triggered in the bg when timer hits 0."""
+
+        await self.send(text_data = json.dumps({'type' : 'auction_ended', 'data' : event['payload']}))
+
+    async def auction_started(self, event):
+        """Triggered when the auction is started by the admin."""
+
+        await self.send(text_data = json.dumps({'type' : 'auction_started', 'data' : event['payload']}))

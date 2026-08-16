@@ -1,17 +1,14 @@
-"""
-ASGI config for backend project.
+# asgi.py
 
-It exposes the ASGI callable as a module-level variable named ``django_asgi_app`` (in this case).
 
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
-"""
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
+from django.urls import path
+
+from api.consumers import BidConsumer
 
 import os
 
-from channels.routing import ProtocolTypeRouter, URLRouter
-
-from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
@@ -19,4 +16,5 @@ django_asgi_app = get_asgi_application()
 
 application = ProtocolTypeRouter({
     'http' : django_asgi_app,
+    'websocket' : URLRouter([path('ws/bids/<int:tech_id>/', BidConsumer.as_asgi())])
 })
