@@ -26,7 +26,11 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env('DJANGO_SECRET_KEY')
+B2B_HOST_SECRET = env('B2B_HOST_SECRET')
+HUB_SECRET_KEY = env('HUB_SECRET_KEY')
+
+HUB_SERVICE_URL = env('HUB_SERVICE_URL')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
@@ -139,7 +143,7 @@ CHANNEL_LAYERS = {
     'default' : {
         'BACKEND' : 'channels_redis.core.RedisChannelLayer',
         'CONFIG' : {
-            'hosts' : [('127.0.0.1', 6380)] # Local Redis instance
+            'hosts' : [{'address' : env('REDIS_URL'), 'socket_timeout' : None}] # Local Redis instance
         }
     }
 }

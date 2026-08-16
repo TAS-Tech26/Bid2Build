@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 class Team(models.Model):
     user=models.OneToOneField(User, on_delete=models.CASCADE, related_name="team")
     name = models.CharField(max_length = 255, unique = True)
+    team_code = models.CharField(max_length = 10, unique = True, db_index = True)
     available_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     escrow_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
 
@@ -25,12 +26,7 @@ class Team(models.Model):
 
 class Technology(models.Model):
 
-    STATUS_CHOICES = [
-        ('QUEUED', 'Queued'),
-        ('ACTIVE', 'Active'),
-        ('SOLD', 'Sold'),
-        ('UNSOLD', 'Unsold'),
-    ]
+    STATUS_CHOICES = [('QUEUED', 'Queued'), ('ACTIVE', 'Active'), ('SOLD', 'Sold'), ('UNSOLD', 'Unsold')]
 
     name = models.CharField(max_length = 255)
     description = models.TextField(blank = True)
@@ -39,7 +35,7 @@ class Technology(models.Model):
     current_highest_bid = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     end_time = models.DateTimeField(null = True, blank = True)
 
-    highest_bidder = models.ForeignKey(Team, null = True, blank = True, on_delete = models.SET_NULL, related_name = 'bids')
+    highest_bidder = models.ForeignKey(Team, null = True, blank = True, on_delete = models.SET_NULL, related_name = 'won_technologies')
 
     class Meta:
 
@@ -66,3 +62,16 @@ class AuctionParticipant(models.Model):
     class Meta:
 
         unique_together = ('team', 'technology')
+
+
+class BidLog(models.Model):
+
+    bid_amount = models.DecimalField(max_digits = 10, decimal_places = 2)
+    timestamp = models.DateTimeField(auto_now_add = True, db_index = True)
+
+    team = models.ForeignKey(Team, on_delete = models.CASCADE)
+    technology = models.ForeignKey(Technology, on_delete = models.CASCADE, related_name = 'bid_history')
+
+    class Meta:
+
+        ordering = ['-timestamp']
