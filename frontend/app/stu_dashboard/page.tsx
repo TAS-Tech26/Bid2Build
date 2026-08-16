@@ -65,24 +65,28 @@ export default function StudentDashboard() {
 
   useEffect(() => {
 
-    const storedTeam = localStorage.getItem("teamName");
-
-    if(storedTeam){
-      setTeamName(storedTeam);
+    const storedTeam = localStorage.getItem("team");
+    const token=localStorage.getItem("token");
+    if(!token){
+      router.push("/login");
+      return;
     }
-    else{
+    if(!storedTeam){
+      router.push("/login");
+      return;
+    }
+    try{
+      const team=JSON.parse(storedTeam);
+      setTeamName(team.name);
+      setCredits(team.credits);
+    }
+    catch(error){
+      console.log("Invalid team data", error);
+      localStorage.removeItem("team");
+      localStorage.removeItem("token");
       router.push("/login");
     }
-
-    const storedCredits = localStorage.getItem("credits");
-    if (storedCredits) {
-      setCredits(storedCredits);
-    } else {
-      localStorage.setItem("credits", "1150");
-      setCredits("1150");
-    }
-
-  },[]);
+  },[router]);
 
   const getAssetIcon = (iconCode: string) => {
     switch (iconCode) {
