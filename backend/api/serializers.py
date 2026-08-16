@@ -10,7 +10,7 @@ class BidSerializer(serializers.Serializer):
 
     team_id = serializers.IntegerField()
     tech_id = serializers.IntegerField()    
-    bid_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    bid_amount = serializers.DecimalField(max_digits=6, decimal_places=2)
     
     '''def __init__(self, request_body):
         self.errors = None
