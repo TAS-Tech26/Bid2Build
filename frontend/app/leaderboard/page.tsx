@@ -51,21 +51,28 @@ export default function LeaderboardPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const storedTeam = localStorage.getItem("teamName");
-    if (storedTeam) {
-      setCurrentTeam(storedTeam);
-    } else {
+    const storedTeam = localStorage.getItem("team");
+    const token=localStorage.getItem("token");
+    if (!storedTeam) {
+      router.push("/login");
+      return;
+    } 
+    if(!token){
+      router.push("/login");
+      return;
+    }
+    try{
+      const team=JSON.parse(storedTeam);
+      setCurrentTeam(team.name);
+      setCredits(team.credits);
+    }
+    catch(error){
+      console.log("Invalid team data", error);
+      localStorage.removeItem("team");
+      localStorage.removeItem("token");
       router.push("/login");
     }
-
-    const storedCredits = localStorage.getItem("credits");
-    if (storedCredits) {
-      setCredits(storedCredits);
-    } else {
-      localStorage.setItem("credits", "1150");
-      setCredits("1150");
-    }
-  }, []);
+  }, [router]);
 
   const filtered = leaderboard.filter((t) =>
     t.team.toLowerCase().includes(searchTerm.toLowerCase())
