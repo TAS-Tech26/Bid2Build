@@ -3,10 +3,10 @@
 
 from django.db import models
 from django.db.models import CheckConstraint, Q
-
+from django.contrib.auth.models import User
 
 class Team(models.Model):
-
+    user=models.OneToOneField(User, on_delete=models.CASCADE, related_name="team")
     name = models.CharField(max_length = 255, unique = True)
     available_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     escrow_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
