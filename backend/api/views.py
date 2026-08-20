@@ -2,35 +2,41 @@
 
 
 from datetime import timedelta
-
 from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST, require_GET
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
-from .redis_service import RedisService
-
+from .authentication import HubJWTAuthentication
 from .handlers import BidHandler, ParticipantHandler
 from .models import AuctionParticipant, BidLog, Team, Technology
+from .redis_service import RedisService
 from .serializers import BidSerializer, LeaderboardSerializer, ParticipantActionSerializer, TechnologySerializer
 
 import json, hmac, requests
 
 
 @api_view(['POST'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def place_bid_view(request):
-    serializer = BidSerializer(data=request.data)
+    serializer = BidSerializer(data = request.data)
+
     if not serializer.is_valid():
+
         return JsonResponse({'error' : serializer.errors}, status = 400)
+
     data = serializer.validated_data
-    success, message = BidHandler.process_transaction(team_code = data['team_code'], tech_id = data['tech_id'], bid_amount = data['bid_amount'])
+
+    success, message = BidHandler.process_transaction(team_code = request.user.team_code, tech_id = data['tech_id'], bid_amount = data['bid_amount'])
 
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def join_auction_view(request):
     serializer = ParticipantActionSerializer(request.body)
 
@@ -39,12 +45,13 @@ def join_auction_view(request):
         return JsonResponse({'error' : serializer.errors}, status = 400)
 
     data = serializer.validated_data
-    success, message = ParticipantHandler.join_auction(team_code = data['team_code'], tech_id = data['tech_id'])
+    success, message = ParticipantHandler.join_auction(team_code = request.user.team_code, tech_id = data['tech_id'])
 
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def back_out_auction_view(request):
     serializer = ParticipantActionSerializer(request.body)
 
@@ -53,11 +60,13 @@ def back_out_auction_view(request):
         return JsonResponse({'error' : serializer.errors}, status = 400)
 
     data = serializer.validated_data
-    success, message = ParticipantHandler.back_out_auction(team_code = data['team_code'], tech_id = data['tech_id'])
+    success, message = ParticipantHandler.back_out_auction(team_code = request.user.team_code, tech_id = data['tech_id'])
 
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
-@require_GET
+@api_view(['GET'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_all_technologies_view(request):
     technologies = Technology.objects.select_related('highest_bidder').all().order_by('id')
 
@@ -65,7 +74,9 @@ def get_all_technologies_view(request):
 
     return JsonResponse({'technologies' : data}, status = 200)
 
-@require_GET
+@api_view(['GET'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_leaderboard_view(request):
     teams = Team.objects.prefetch_related('won_technologies').all().order_by('-available_credits')
 
@@ -73,7 +84,9 @@ def get_leaderboard_view(request):
 
     return JsonResponse({'leaderboard' : data}, status = 200)
 
-@require_GET
+@api_view(['GET'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_room_details_view(request, tech_id):
     try:
         tech = Technology.objects.get(id = tech_id)
@@ -91,8 +104,7 @@ def get_room_details_view(request, tech_id):
 
     return JsonResponse({'tech_id' : tech.id, 'teams_in_room' : teams_in_room, 'bid_history' : bid_history}, status = 200)
 
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
 def sync_wallets_view(request):
     """Endpoint to sync team wallets with the Hub service."""
 
@@ -107,8 +119,6 @@ def sync_wallets_view(request):
         data = json.loads(request.body)
         wallets = data.get('wallets', [])
 
-        teams_to_create = []
-
         for wallet in wallets:
             Team.objects.update_or_create(
                 team_code = wallet['team_code'],
@@ -119,12 +129,12 @@ def sync_wallets_view(request):
     except json.JSONDecodeError:
 
         return JsonResponse({'error' : "Invalid JSON payload."}, status = 400)
+    
     except Exception as e:
 
         return JsonResponse({'error' : f"System error: {str(e)}"}, status = 500)
 
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
 def start_auction_view(request, tech_id):
     """Host endpoint to start an auction & the global clock."""
 
@@ -156,8 +166,54 @@ def start_auction_view(request, tech_id):
 
         return JsonResponse({'error' : "Technology not found."}, status = 404)
 
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+def settle_auction_view(request, tech_id):
+    """Host endpoint triggered when countdown hits 0 to finalise the sale."""
+
+    provided = request.headers.get('X-Host-Secret')
+    expected = settings.B2B_HOST_SECRET
+
+    if not expected or not hmac.compare_digest(provided, expected):
+
+        return JsonResponse({'error' : "Unauthorized admin action."}, status = 403)
+
+    try:
+        with transaction.atomic():
+            tech = Technology.objects.select_for_update().get(id = tech_id)
+
+            if tech.status != 'ACTIVE':
+
+                return JsonResponse({'error' : f"Cannot settle. Auction is currently {tech.status}."}, status = 400)
+
+            if not tech.highest_bidder:
+                tech.status = 'UNSOLD'
+                tech.save(update_fields = ['status'])
+
+                transaction.on_commit(lambda: RedisService.broadcast_auction_ended(tech_id = tech.id, status = 'UNSOLD', winner_name = None))
+
+                return JsonResponse({'message' : "Auction closed with no bids. Status set to UNSOLD."}, status = 200)
+
+            winner = Team.objects.select_for_update().get(id = tech.highest_bidder.id)
+            winner.escrow_credits -= tech.current_highest_bid
+            winner.save(update_fields = ['escrow_credits'])
+
+            tech.status = 'SOLD'
+            tech.save(update_fields = ['status'])
+
+            winner_name = winner.name
+
+            transaction.on_commit(lambda: RedisService.broadcast_auction_ended(tech_id = tech.id, status = 'SOLD', winner_name = winner_name))
+
+        return JsonResponse({'message' : f"Auction settled. Won by {winner_name}."}, status = 200)
+    except Technology.DoesNotExist:
+
+        return JsonResponse({'error' : "Technology not found."}, status = 404)
+
+    except Exception as e:
+
+        return JsonResponse({'error' : f"System error : {str(e)}"}, status = 500)
+
+@api_view(['POST'])
 def push_final_results_view(request):
     """Master trigger to push final auction results to the hub."""
 
@@ -193,15 +249,16 @@ def push_final_results_view(request):
         if response.ok:
 
             return JsonResponse({'message' : "Tournament locked & results successfully synced to Hub."}, status = 200)
+        
         else:
 
             return JsonResponse({'error' : f"Hub rejected payload: {response.text}"}, status = 502)
+        
     except requests.exceptions.RequestException as e:
 
         return JsonResponse({'error' : f"Network error contacting Hub: {str(e)}"}, status = 503)
 
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
 def emergency_reset_auction_view(request, tech_id):
     """Admin endpoint to reset an auction in case of critical issues."""
 
