@@ -1,9 +1,11 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+
 import Navbar from "@/components/Navbar";
+
+import Link from 'next/link'
+import {useRouter} from 'next/navigation'
+import {useEffect, useRef, useState} from 'react'
 
 const leaderboard = [
   { rank: 1,  prevRank: 2,  team: "Team Titan",   quizScore: 29, credits: 1200, assets: 0 },
@@ -18,7 +20,7 @@ const leaderboard = [
   { rank: 10, prevRank: 8,  team: "Team Zenith",  quizScore: 25, credits: 1200, assets: 0 },
   { rank: 11, prevRank: 11, team: "Team Ares",    quizScore: 24, credits: 1150, assets: 0 },
   { rank: 12, prevRank: 12, team: "Team Helios",  quizScore: 24, credits: 1150, assets: 0 },
-];
+]
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span title="Gold" style={{ fontSize: "1.4rem" }}>🥇</span>;

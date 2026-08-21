@@ -1,25 +1,29 @@
-import axios from 'axios';
+//api.ts
 
-const api=axios.create({
-    baseURL:"http://127.0.0.1:8000/api/",
-});
 
-api.interceptors.request.use(
-    (config) => {
+import axios from 'axios'
+
+
+export const hubApi = axios.create({baseURL : process.env.HUB_SERVICE_URL || 'http://127.0.0.1:8000/api/'})
+
+export const b2bApi = axios.create({baseURL : process.env.B2B_SERVICE_URL || 'http://127.0.0.1:8002/api/'})
+
+
+b2bApi.interceptors.request.use((config) => {
 
         if (typeof window !== "undefined") {
+            const token = localStorage.getItem("token")
 
-            const token = localStorage.getItem("token");
-
-            if (token) {
-
-                config.headers.Authorization =
-                    `Token ${token}`;
-
-            }
+            if (token && config.headers) config.headers.Authorization = `Bearer ${token}`
         }
 
-        return config;
+        return config
+    },
+    (error) => {
+        
+        return Promise.reject(error)
+    
     }
-);
-export default api;
+)
+
+export default b2bApi
