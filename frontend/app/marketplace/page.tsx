@@ -4,104 +4,39 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import api from '../services/api';
+import { time } from "console";
 
-/* ─────────────────────────────────────────────
-   Auction data  (mock – no backend)
-───────────────────────────────────────────── */
-const AUCTIONS_SEED = [
-  {
-    id: 1,
-    name: "Computer Vision",
-    category: "Core Tech",
-    startingBid: 300,
-    currentHighestBid: 480,
-    teamsInRoom: 18,
-    status: "LIVE" as const,
-    endsInSeconds: 247,
-    icon: "🤖",
-  },
-  {
-    id: 2,
-    name: "Artificial Intelligence Systems",
-    category: "Core Tech",
-    startingBid: 350,
-    currentHighestBid: 620,
-    teamsInRoom: 24,
-    status: "LIVE" as const,
-    endsInSeconds: 583,
-    icon: "🧠",
-  },
-  {
-    id: 3,
-    name: "Cloud Infrastructure",
-    category: "Business Resource",
-    startingBid: 150,
-    currentHighestBid: 150,
-    teamsInRoom: 9,
-    status: "WAITING" as const,
-    endsInSeconds: 0,
-    icon: "☁️",
-  },
-  {
-    id: 4,
-    name: "Investor Network",
-    category: "Special Asset",
-    startingBid: 200,
-    currentHighestBid: 375,
-    teamsInRoom: 14,
-    status: "LIVE" as const,
-    endsInSeconds: 1024,
-    icon: "💼",
-  },
-  {
-    id: 5,
-    name: "Marketing Campaign",
-    category: "Business Resource",
-    startingBid: 200,
-    currentHighestBid: 200,
-    teamsInRoom: 6,
-    status: "WAITING" as const,
-    endsInSeconds: 0,
-    icon: "📣",
-  },
-  {
-    id: 6,
-    name: "Patent Portfolio",
-    category: "Special Asset",
-    startingBid: 500,
-    currentHighestBid: 850,
-    teamsInRoom: 31,
-    status: "LIVE" as const,
-    endsInSeconds: 129,
-    icon: "📜",
-  },
-];
-
-/* ─────────────────────────────────────────────
-   Helper: format seconds → mm:ss
-───────────────────────────────────────────── */
-function formatTime(seconds: number): string {
-  if (seconds <= 0) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+type Status='ACTIVE'|'QUEUED'|'INACTIVE'
+interface Technology{
+  id:number,
+  name:string,
+  description:string,
+  status:Status,
+  base_price:number,
+  current_price:number,
+  highest_bidder_id:number|null,
+  end:string,
 }
+
+
 
 /* ─────────────────────────────────────────────
    Auction Card Component
 ───────────────────────────────────────────── */
-type AuctionEntry = (typeof AUCTIONS_SEED)[number];
+
+
 
 function AuctionCard({
-  auction,
+  technology,
   timeLeft,
 }: {
-  auction: AuctionEntry;
+  technology:Technology;
   timeLeft: number;
 }) {
-  const isLive = auction.status === "LIVE";
+  const isLive = technology.status === "ACTIVE";
   const isCritical = isLive && timeLeft <= 60;
-
+  console.log(technology)
   return (
     <div
       className={`auction-card ${isLive ? "auction-card--live" : "auction-card--waiting"} ${isCritical ? "auction-card--critical" : ""}`}
@@ -111,37 +46,37 @@ function AuctionCard({
 
       {/* Top row: name + badge */}
       <div className="card-header">
-        <div className="card-icon">{auction.icon}</div>
+        {/*<div className="card-icon">{auction.icon}</div>*/}
         <div className="card-title-block">
-          <h2 className="card-name">{auction.name}</h2>
-          <span className="card-category">{auction.category}</span>
+          <h2 className="card-name">{technology.name}</h2>
+          {/*<span className="card-category">{technology.category}</span>*/}
         </div>
-        <StatusBadge status={auction.status} critical={isCritical} />
+        <StatusBadge status={technology.status} critical={isCritical} />
       </div>
 
       {/* Stats grid */}
       <div className="stats-grid">
         <StatBox
           label="Current Highest Bid"
-          value={`${auction.currentHighestBid.toLocaleString()} CR`}
+          value={`${technology.current_price} CR`}
           accent={true}
           large={true}
         />
         <StatBox
           label="Starting Bid"
-          value={`${auction.startingBid.toLocaleString()} CR`}
+          value={`${technology.base_price} CR`}
         />
-        <StatBox
+        {/*<StatBox
           label="Teams in Room"
-          value={`${auction.teamsInRoom} Teams`}
+          value={`${technology.teamsInRoom} Teams`}
           icon="👥"
-        />
+        />*/}
         <TimerBox timeLeft={timeLeft} isLive={isLive} critical={isCritical} />
       </div>
 
       {/* CTA */}
       <Link
-        href={`/bidding/${auction.id}`}
+        href={`/bidding/${technology.id}`}
         className={`join-btn ${isLive ? "join-btn--live" : "join-btn--waiting"}`}
       >
         {isLive ? (
@@ -150,7 +85,7 @@ function AuctionCard({
             JOIN AUCTION →
           </>
         ) : (
-          "NOTIFY ME WHEN LIVE"
+          "AUCTION IS NOT ACTIVE"
         )}
       </Link>
     </div>
@@ -161,18 +96,35 @@ function StatusBadge({
   status,
   critical,
 }: {
-  status: string;
+  status: Status;
   critical: boolean;
 }) {
-  if (status === "LIVE") {
+  if (status === "ACTIVE") {
     return (
-      <span className={`badge badge--live ${critical ? "badge--critical" : ""}`}>
+      <span
+        className={`badge badge--live ${
+          critical ? "badge--critical" : ""
+        }`}
+      >
         <span className="badge__dot" />
         {critical ? "ENDING SOON" : "LIVE"}
       </span>
     );
   }
-  return <span className="badge badge--waiting">WAITING</span>;
+
+  if (status === "QUEUED") {
+    return (
+      <span className="badge badge--waiting">
+        QUEUED
+      </span>
+    );
+  }
+
+  return (
+    <span className="badge badge--inactive">
+      CLOSED
+    </span>
+  );
 }
 
 function StatBox({
@@ -180,19 +132,20 @@ function StatBox({
   value,
   accent,
   large,
-  icon,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   large?: boolean;
-  icon?: string;
 }) {
   return (
     <div className={`stat-box ${accent ? "stat-box--accent" : ""}`}>
       <p className="stat-label">{label}</p>
-      <p className={`stat-value ${large ? "stat-value--large" : ""} ${accent ? "stat-value--gold" : ""}`}>
-        {icon && <span style={{ marginRight: 4 }}>{icon}</span>}
+      <p
+        className={`stat-value ${
+          large ? "stat-value--large" : ""
+        } ${accent ? "stat-value--gold" : ""}`}
+      >
         {value}
       </p>
     </div>
@@ -209,10 +162,19 @@ function TimerBox({
   critical: boolean;
 }) {
   return (
-    <div className={`stat-box timer-box ${critical ? "timer-box--critical" : ""}`}>
+    <div
+      className={`stat-box timer-box ${
+        critical ? "timer-box--critical" : ""
+      }`}
+    >
       <p className="stat-label">Time Remaining</p>
-      <p className={`timer-value ${critical ? "timer-value--critical" : ""}`}>
-        {isLive ? formatTime(timeLeft) : "—"}
+
+      <p
+        className={`timer-value ${
+          critical ? "timer-value--critical" : ""
+        }`}
+      >
+        {isLive ? timeLeft : "--:--"}
       </p>
     </div>
   );
@@ -223,15 +185,23 @@ function TimerBox({
 ───────────────────────────────────────────── */
 export default function MarketplacePage() {
   const router = useRouter();
-  const [credits, setCredits] = useState("1150");
+  const [credits, setCredits] = useState<any>();
+  const[tech,setTech]=useState<Technology[]>([]);
   const [teamName, setTeamName] = useState("");
+  const [loading, setLoading]=useState(true);
   // Per-auction countdown timers (keyed by id)
   const [timers, setTimers] = useState<Record<number, number>>(() =>
-    Object.fromEntries(AUCTIONS_SEED.map((a) => [a.id, a.endsInSeconds]))
+    Object.fromEntries(tech.map((a) => [a.id,
+      Math.max(
+        0,
+        Math.floor(
+          (new Date(a.end).getTime() - Date.now()) / 1000
+        )
+      ),]))
   );
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("access");
     const storedTeam = localStorage.getItem("team");
     if (!storedTeam) {
       router.push("/login");
@@ -244,32 +214,76 @@ export default function MarketplacePage() {
     try{
       const team = JSON.parse(storedTeam);
       setTeamName(team.name);
+      setCredits(team.credits);
     }
     catch(error){
       console.log("Invalid team data", error);
       localStorage.removeItem("team");
-      localStorage.removeItem("token");
+      localStorage.removeItem("access");
       router.push("/login");
     }
   }, [router]);
 
+  useEffect(()=>{
+    const fetchTech=async()=>{
+      try{
+        const token=localStorage.getItem("access");
+        const response=await api.get("/api/items/",{
+           headers:{
+            Authorization:`Bearer ${token}`,
+          }},
+      );
+      setTech(response.data.technologies);
+       const initialTimers: Record<number, number> = {};
+      response.data.forEach((item: Technology) => {
+        if (item.end) {
+          initialTimers[item.id] = Math.max(
+            0,
+            Math.floor(
+              (new Date(item.end).getTime() - Date.now()) / 1000
+            )
+          );
+        }
+      });
+
+      setTimers(initialTimers);
+      }catch(e){
+        console.log("Failed to fetch technologies:",e);
+      }finally{
+        setLoading(false);
+      }
+    }
+    fetchTech();
+  },[])
+
   // Global tick — counts down every live auction
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimers((prev) => {
-        const next = { ...prev };
-        for (const auction of AUCTIONS_SEED) {
-          if (auction.status === "LIVE" && next[auction.id] > 0) {
-            next[auction.id] = next[auction.id] - 1;
-          }
-        }
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const interval = setInterval(() => {
+    setTimers((prev) => {
+      const updated = { ...prev };
 
-  const liveCount = AUCTIONS_SEED.filter((a) => a.status === "LIVE").length;
+      Object.keys(updated).forEach((id) => {
+        if (updated[Number(id)] > 0) {
+          updated[Number(id)] -= 1;
+        }
+      });
+
+      return updated;
+    });
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
+  const liveCount = tech.filter((a) => a.status === "ACTIVE").length;
+
+  if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-white">
+      Loading Technologies...
+    </div>
+  );
+}
 
   return (
     <>
@@ -648,16 +662,16 @@ export default function MarketplacePage() {
             <div className="summary-stat">
               <p className="summary-stat__label">Total Assets</p>
               <p className="summary-stat__value" style={{ color: "#e2e8f0" }}>
-                {AUCTIONS_SEED.length}
+                {tech.length}
               </p>
             </div>
 
-            <div className="summary-stat">
+            {/*<div className="summary-stat">
               <p className="summary-stat__label">Teams Competing</p>
               <p className="summary-stat__value" style={{ color: "#8B5CF6" }}>
-                {AUCTIONS_SEED.reduce((s, a) => s + a.teamsInRoom, 0)}
+                {tech.reduce((s, a) => s + a.teamsInRoom, 0)}
               </p>
-            </div>
+            </div>*/}
 
             <div
               style={{
@@ -715,11 +729,11 @@ export default function MarketplacePage() {
               gap: 24,
             }}
           >
-            {AUCTIONS_SEED.map((auction) => (
+            {tech.map((technology) => (
               <AuctionCard
-                key={auction.id}
-                auction={auction}
-                timeLeft={timers[auction.id] ?? auction.endsInSeconds}
+                key={technology.id}
+                technology={technology}
+                timeLeft={timers[technology.id] ?? 0}
               />
             ))}
           </section>
