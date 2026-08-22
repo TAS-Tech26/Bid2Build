@@ -6,24 +6,22 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [username, setusername] = useState("");
-  const [password, setPassword] = useState("");
+  const [team_code, setteamcode] = useState("");
   const [error, setError] = useState("");
-
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter both username and password.");
+    if (!team_code.trim()) {
+      setError("Please enter team code/pin");
       return;
     }
 
     setError("");
 
     try{
-      const response=await api.post("login/",{
-        username:username,
-        password:password,
+      localStorage.clear();
+      const response=await api.post("api/login/",{
+        team_code:team_code
       });
 
       console.log(
@@ -31,9 +29,17 @@ export default function LoginPage() {
       response.data
     );
 
-      localStorage.setItem('token', response.data.token); //To be commented later during deployment
-      localStorage.setItem('team', JSON.stringify(response.data.team));
+      localStorage.setItem(
+      "access",
+      response.data.access
+      );
 
+      localStorage.setItem(
+          "refresh",
+          response.data.refresh
+      );
+
+      localStorage.setItem('team', JSON.stringify(response.data.team));
       router.push("/stu_dashboard");
     }
     catch (error: any) {
@@ -55,7 +61,7 @@ export default function LoginPage() {
           if (error.response.status === 401) {
 
               setError(
-                  "Invalid username or password."
+                  "Invalid team code/pin"
               );
 
           } else {
@@ -206,9 +212,9 @@ export default function LoginPage() {
 
           <input
             type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e)=>setusername(e.target.value)}
+            placeholder="Enter 4 character team code/pin"
+            value={team_code}
+            onChange={(e)=>setteamcode(e.target.value)}
             className="
             w-full
             p-4
@@ -230,7 +236,7 @@ export default function LoginPage() {
 
 
 
-          <input
+         {/* <input
             type="password"
             placeholder="Password"
             value={password}
@@ -252,7 +258,7 @@ export default function LoginPage() {
 
             focus:border-[#E8C07D]/60
             "
-          />
+          />*/}
 
 
 
