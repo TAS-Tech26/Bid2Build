@@ -21,18 +21,18 @@ from django.contrib import admin
 from django.urls import path
 
 from api.views import (
-    back_out_auction_view, emergency_reset_auction_view, get_all_technologies_view, get_leaderboard_view, get_room_details_view, join_auction_view, place_bid_view, push_final_results_view,
-    start_auction_view, sync_wallets_view
+    back_out_auction_view, emergency_reset_auction_view, get_all_technologies_view, get_leaderboard_view, get_room_details_view, join_auction_view, place_bid_view,
+    push_final_results_view, settle_auction_view, start_auction_view, sync_wallets_view,login
 )
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('api/admin/sync-wallets/', sync_wallets_view, name = 'sync_wallets'),
-
     path('api/admin/start-auction/<int:tech_id>/', start_auction_view, name = 'start_auction'),
+    path('api/admin/settle-auction/<int:tech_id>/', settle_auction_view, name = 'settle_auction'),
 
+    path('api/login/', login, name='login'),
     path('api/bid/', place_bid_view, name = 'place_bid'),
     path('api/join/', join_auction_view, name = 'join_auction'),
     path('api/back-out/', back_out_auction_view, name = 'back_out_auction'),
