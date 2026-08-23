@@ -7,70 +7,15 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .authentication import HubJWTAuthentication
 from .handlers import BidHandler, ParticipantHandler
 from .models import AuctionParticipant, BidLog, Team, Technology
 from .redis_service import RedisService
-from .serializers import BidSerializer, LeaderboardSerializer, ParticipantActionSerializer, TechnologySerializer, LoginSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import AllowAny
+from .serializers import BidSerializer, LeaderboardSerializer, ParticipantActionSerializer, TechnologySerializer
+
 import json, hmac, requests
-from django.conf import settings
-from .models import Team
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def login(request):
-    team_code=request.data.get("team_code")
-    response=requests.get(f"{settings.HUB_SERVICE_URL}/api/admin/verify-team/{team_code}/BID2BUILD/", 
-                          headers={"X-Hub-Secret": settings.HUB_SECRET_KEY})
-   # print(response)
-    if response.status_code!=200:
-        return JsonResponse({"error":"Invalid Team Code"}, status=400)
-    
-    team_data=response.json()
-    team=Team.objects.get(team_code=team_code)
-    team_credits=team.available_credits
-    team_data['credits']=str(team_credits)
-    refresh=RefreshToken()
-    refresh["team_id"] = team_data["team_id"]
-    refresh["team_code"] = team_data["team_code"]
-    refresh["event_name"] = team_data["event_name"]
-    refresh["team_credits"]=team_data["credits"]
-    return JsonResponse({
-    "access": str(refresh.access_token),
-    "refresh": str(refresh),
-    "team": team_data
-        })
-
-    '''serialiser=LoginSerializer(data=request.data)
-    if not serialiser.is_valid():
-        return JsonResponse({"error":serialiser.errors}, status=400)
-    
-    data=serialiser.validated_data
-    try:
-        team=Team.objects.get(team_code=data['team_code'])
-    except Team.DoesNotExist:
-        return JsonResponse({"error":"Invalid Code"}, status=401)
-    refresh=RefreshToken()
-    refresh['team_code']=team.team_code
-    refresh['team_id']=team.id
-    
-    return JsonResponse({
-        "access": str(refresh.access_token),
-        "refresh": str(refresh),
-        "team": {
-            "id": team.id,
-            "name": team.name,
-            "team_code": team.team_code,
-            "credits": str(team.available_credits),
-        }
-    })'''
-
-
 @api_view(['POST'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -92,22 +37,29 @@ def place_bid_view(request):
 @permission_classes([IsAuthenticated])
 def join_auction_view(request):
     serializer = ParticipantActionSerializer(request.body)
+
     if not serializer.is_valid():
+
         return JsonResponse({'error' : serializer.errors}, status = 400)
+
     data = serializer.validated_data
     success, message = ParticipantHandler.join_auction(team_code = request.user.team_code, tech_id = data['tech_id'])
+
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @api_view(['POST'])
-#@authentication_classes([HubJWTAuthentication])
+@authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def back_out_auction_view(request):
     serializer = ParticipantActionSerializer(request.body)
+
     if not serializer.is_valid():
+
         return JsonResponse({'error' : serializer.errors}, status = 400)
 
     data = serializer.validated_data
     success, message = ParticipantHandler.back_out_auction(team_code = request.user.team_code, tech_id = data['tech_id'])
+
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @api_view(['GET'])
@@ -115,8 +67,15 @@ def back_out_auction_view(request):
 @permission_classes([IsAuthenticated])
 def get_all_technologies_view(request):
     technologies = Technology.objects.select_related('highest_bidder').all().order_by('id')
-    data = TechnologySerializer.serialize_many(technologies)
-    return JsonResponse({'technologies' : data}, status = 200)
+    tech_data = TechnologySerializer.serialize_many(technologies)
+    return JsonResponse({'technologies' : tech_data}, status = 200)
+
+@api_view(['GET'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
+def fetch_credits(request):
+    team=Team.objects.get(team_code=request.user.team_code)
+    return JsonResponse({'available_credits':team.available_credits})
 
 @api_view(['GET'])
 @authentication_classes([HubJWTAuthentication])
@@ -146,24 +105,7 @@ def get_room_details_view(request, tech_id):
 
     bid_history = [{'team_name' : bid.team.name, 'amount' : str(bid.bid_amount), 'timestamp' : bid.timestamp.isoformat()} for bid in recent_bids]
 
-    return JsonResponse({
-    "tech_id": tech.id,
-    "tech_name": tech.name,
-    "status": tech.status,
-    "current_highest_bid": str(tech.current_highest_bid),
-    "highest_bidder": (
-        tech.highest_bidder.name
-        if tech.highest_bidder
-        else None
-    ),
-    "end_time": (
-        tech.end_time.isoformat()
-        if tech.end_time
-        else None
-    ),
-    "teams_in_room": teams_in_room,
-    "bid_history": bid_history,
-}, status=200)
+    return JsonResponse({'tech_id' : tech.id, 'teams_in_room' : teams_in_room, 'bid_history' : bid_history}, status = 200)
 
 @api_view(['POST'])
 def sync_wallets_view(request):

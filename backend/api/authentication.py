@@ -12,15 +12,16 @@ class HubJWTAuthentication(authentication.BaseAuthentication):
 
     def authenticate(self, request):
         auth_header = request.headers.get('Authorization')
-        print("AUTH HEADER: ", auth_header)
+
         if not auth_header or not auth_header.startswith("Bearer "):
+
             return None
 
         token = auth_header.split(' ')[1]
 
         try:
             payload = jwt.decode(token, settings.HUB_SECRET_KEY, algorithms = ['HS256'])
-            print("payload: ",payload)
+
             class AuthenticatedTeam:
 
                 def __init__(self, team_code, event_name):

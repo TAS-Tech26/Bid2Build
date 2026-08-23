@@ -5,19 +5,21 @@ from rest_framework import serializers
 
 
 class BidSerializer(serializers.Serializer):
+
     tech_id = serializers.IntegerField()    
     bid_amount = serializers.DecimalField(max_digits = 10, decimal_places = 2)
     
 
-class ParticipantActionSerializer(serializers.Serializer):
+class ParticipantActionSerializer:
+
     tech_id = serializers.IntegerField()
 
-class LoginSerializer(serializers.Serializer):
-    team_code=serializers.CharField(max_length=4)
 
 class TechnologySerializer:
+
     @staticmethod
     def serialize_many(tech_queryset):
+
         return [{
             'id' : tech.id,
             'name' : tech.name,
@@ -31,8 +33,10 @@ class TechnologySerializer:
 
 
 class LeaderboardSerializer:
+
     @staticmethod
     def serialize_many(team_queryset):
+
         return [{
             'team_id' : team.id,
             'team_name' : team.name,
