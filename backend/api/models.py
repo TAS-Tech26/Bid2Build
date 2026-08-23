@@ -8,7 +8,7 @@ from django.db.models import CheckConstraint, Q
 class Team(models.Model):
 
     name = models.CharField(max_length = 255, unique = True)
-    team_code = models.CharField(max_length = 4, unique = True, db_index = True)
+    team_code = models.CharField(max_length = 10, unique = True, db_index = True)
     available_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     escrow_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
 

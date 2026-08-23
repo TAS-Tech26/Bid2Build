@@ -6,6 +6,7 @@ from pathlib import Path
 import environ, os
 from datetime import timedelta
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(DEBUG = (bool, False))
@@ -14,7 +15,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 
 SECRET_KEY = env('SECRET_KEY')
-#B2B_HOST_SECRET = env('B2B_HOST_SECRET')
+B2B_HOST_SECRET = env('B2B_HOST_SECRET')
 HUB_SECRET_KEY = env('HUB_SECRET_KEY')
 HUB_SERVICE_URL = env('HUB_SERVICE_URL')
 
