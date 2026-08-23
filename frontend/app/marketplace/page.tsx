@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
-import api from '../services/api';
+import b2bApi from '../services/api';
 import { time } from "console";
 
 type Status='ACTIVE'|'QUEUED'|'INACTIVE'
@@ -201,8 +201,8 @@ export default function MarketplacePage() {
   );
 
   useEffect(() => {
-    const token = localStorage.getItem("access");
-    const storedTeam = localStorage.getItem("team");
+    const token = localStorage.getItem("token");
+    const storedTeam = localStorage.getItem("team_name");
     if (!storedTeam) {
       router.push("/login");
       return;
@@ -211,15 +211,29 @@ export default function MarketplacePage() {
       router.push("/login");
       return;
     }
+
+    const fetch_credits=async()=>{
+      try{
+      const response= await b2bApi.get('api/fetchcredits/',{
+           headers:{
+            Authorization:`Bearer ${token}`,
+          }},);
+    setCredits(response.data.available_credits);
+      //console.log(response.data);
+    }
+    catch(e){
+      console.log("Failed to fetch team credits, error:", e);
+    }
+  }
+  fetch_credits();
     try{
-      const team = JSON.parse(storedTeam);
-      setTeamName(team.name);
-      setCredits(team.credits);
+      setTeamName(storedTeam);
     }
     catch(error){
       console.log("Invalid team data", error);
-      localStorage.removeItem("team");
-      localStorage.removeItem("access");
+      console.log("flag");
+      localStorage.removeItem("team_name");
+      localStorage.removeItem("token");
       router.push("/login");
     }
   }, [router]);
@@ -227,8 +241,8 @@ export default function MarketplacePage() {
   useEffect(()=>{
     const fetchTech=async()=>{
       try{
-        const token=localStorage.getItem("access");
-        const response=await api.get("/api/items/",{
+        const token=localStorage.getItem("token");
+        const response=await b2bApi.get("/api/items/",{
            headers:{
             Authorization:`Bearer ${token}`,
           }},
@@ -619,7 +633,7 @@ export default function MarketplacePage() {
             </div>
 
             <Link
-              href="/stu_dashboard"
+              href="/marketplace"
               style={{
                 padding: "10px 22px",
                 borderRadius: 12,
@@ -708,7 +722,7 @@ export default function MarketplacePage() {
           </div>
 
           {/* ── Filter Tabs (UI only) ── */}
-          <div className="filter-tabs">
+          {/*<div className="filter-tabs">
             {["All Assets", "Core Tech", "Business Resource", "Special Asset", "🔴 Live Only"].map(
               (tab, i) => (
                 <button
@@ -719,7 +733,7 @@ export default function MarketplacePage() {
                 </button>
               )
             )}
-          </div>
+          </div>*/}
 
           {/* ── Auction Grid ── */}
           <section
