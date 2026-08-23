@@ -4,6 +4,7 @@
 from pathlib import Path
 
 import environ, os
+from datetime import timedelta
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,7 +17,6 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 B2B_HOST_SECRET = env('B2B_HOST_SECRET')
 HUB_SECRET_KEY = env('HUB_SECRET_KEY')
-
 HUB_SERVICE_URL = env('HUB_SERVICE_URL')
 
 DEBUG = env('DEBUG')
@@ -104,6 +104,21 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ]
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "SIGNING_KEY": HUB_SECRET_KEY,
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

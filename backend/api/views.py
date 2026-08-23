@@ -7,7 +7,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .authentication import HubJWTAuthentication
 from .handlers import BidHandler, ParticipantHandler
@@ -16,8 +16,6 @@ from .redis_service import RedisService
 from .serializers import BidSerializer, LeaderboardSerializer, ParticipantActionSerializer, TechnologySerializer
 
 import json, hmac, requests
-
-
 @api_view(['POST'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -69,10 +67,15 @@ def back_out_auction_view(request):
 @permission_classes([IsAuthenticated])
 def get_all_technologies_view(request):
     technologies = Technology.objects.select_related('highest_bidder').all().order_by('id')
+    tech_data = TechnologySerializer.serialize_many(technologies)
+    return JsonResponse({'technologies' : tech_data}, status = 200)
 
-    data = TechnologySerializer.serialize_many(technologies)
-
-    return JsonResponse({'technologies' : data}, status = 200)
+@api_view(['GET'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
+def fetch_credits(request):
+    team=Team.objects.get(team_code=request.user.team_code)
+    return JsonResponse({'available_credits':team.available_credits})
 
 @api_view(['GET'])
 @authentication_classes([HubJWTAuthentication])

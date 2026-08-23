@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import b2bApi from '../services/api';
 import { 
   ShoppingBag, 
   Hammer, 
@@ -20,7 +21,6 @@ import {
   TrendingUp,
   Sparkles
 } from "lucide-react";
-
 
 const ownedAssets = [
   {
@@ -65,7 +65,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
 
-    const storedTeam = localStorage.getItem("team");
+    const storedTeam = localStorage.getItem("team_name");
     const token=localStorage.getItem("token");
     if(!token){
       router.push("/login");
@@ -75,17 +75,28 @@ export default function StudentDashboard() {
       router.push("/login");
       return;
     }
+    const fetch_credits=async()=>{
+      try{
+        const response=await b2bApi.get('api/fetchcredits/',{
+                   headers:{
+                    Authorization:`Bearer ${token}`,
+                  }},);
+        setCredits(response.data.available_credits);
+      }catch(e){
+        console.log("Error fetching credits, error:", e);
+      }
+    }
+    fetch_credits();
     try{
-      const team=JSON.parse(storedTeam);
-      setTeamName(team.name);
-      setCredits(team.credits);
+        setTeamName(storedTeam);
     }
     catch(error){
       console.log("Invalid team data", error);
-      localStorage.removeItem("team");
-      localStorage.removeItem("token");
-      router.push("/login");
+      //localStorage.removeItem("team");
+      //localStorage.removeItem("token");
+      //router.push("/login");
     }
+    
   },[router]);
 
   const getAssetIcon = (iconCode: string) => {

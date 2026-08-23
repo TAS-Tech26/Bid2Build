@@ -28,18 +28,16 @@ export default function LoginPage() {
         setError('')
 
         try {
-            const response = await hubApi.post('api/client/login/', {room_code : roomCode, team_pin : teamCode})
-
+            const response = await hubApi.post('api/admin/client/login/', {room_code : roomCode, team_code : teamCode})
             console.log("login successful", response.data);
-
             localStorage.setItem('token', response.data.token) //To be commented later during deployment
             localStorage.setItem('team_name', response.data.team_name)
             localStorage.setItem('event_name', response.data.event_name)
 
-            router.push('/stu_dashboard')
+            router.push('/marketplace')
         } catch (error: any) {
             console.log("LOGIN FAILED:", error)
-
+           
             if (error.response) {
                 if (error.response.status === 401 || error.response.status === 403) {
                     setError(error.response.data.error || "Invalid Room Code or Team PIN")
@@ -104,7 +102,7 @@ export default function LoginPage() {
                         placeholder = "Team PIN"
                         value = {teamCode}
                         onChange = {(e) => setTeamCode(e.target.value)}
-                        className = "w-full p-4 rounded-xl bg-white/[0.05] border border-white/10 text-white outline-none focus:border-[#E8C07D]/60 uppercase"
+                        className = "w-full p-4 rounded-xl bg-white/[0.05] border border-white/10 text-white outline-none focus:border-[#E8C07D]/60 "
                     />
 
                     {error && (
@@ -123,6 +121,6 @@ export default function LoginPage() {
             </div>
         </main>
     
-    )
+    );
 
 }
