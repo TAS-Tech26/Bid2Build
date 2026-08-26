@@ -72,21 +72,20 @@ class BidHandler:
                 # Update state
                 tech.current_highest_bid = bid_amount
                 tech.highest_bidder = team
-                tech.end_time = timezone.now() + timedelta(seconds = 15)
+                tech.bid_timer = timezone.now() + timedelta(seconds = 15)
                 tech.save()
 
+                bid_timer_iso =tech.bid_timer.isoformat()
                 BidLog.objects.create(technology = tech, team = team, bid_amount = bid_amount)
-
-                end_time_iso = tech.end_time.isoformat()
-
+                
                 # Explicitly wait for Postgres to confirm the commit before hitting Redis
                 transaction.on_commit(lambda: RedisService.broadcast_new_bid(
                     tech_id = tech_id,
                     bid_amount = str(bid_amount),
                     team_name = team.name,
-                    end_time = end_time_iso
+                    bid_timer=bid_timer_iso
                 ))
-
+    
                 return True, "Bid successfully placed."
         except Technology.DoesNotExist:
 

@@ -8,7 +8,7 @@ from django.db.models import CheckConstraint, Q
 class Team(models.Model):
 
     name = models.CharField(max_length = 255, unique = True)
-    team_code = models.CharField(max_length = 10, unique = True, db_index = True)
+    team_code = models.CharField(max_length = 4, unique = True, db_index = True)
     available_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     escrow_credits = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
 
@@ -33,9 +33,10 @@ class Technology(models.Model):
     status = models.CharField(max_length = 10, choices = STATUS_CHOICES, default = 'QUEUED')
     base_price = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
     current_highest_bid = models.DecimalField(max_digits = 10, decimal_places = 2, default = 0.00)
-    end_time = models.DateTimeField(null = True, blank = True)
-
     highest_bidder = models.ForeignKey(Team, null = True, blank = True, on_delete = models.SET_NULL, related_name = 'won_technologies')
+    bid_timer=models.DateTimeField(null=True, blank=True)
+    auction_duration=models.DecimalField(default=2, max_digits=3, decimal_places=1)
+    end_time = models.DateTimeField(null = True, blank = True)
 
     class Meta:
 
@@ -68,10 +69,8 @@ class BidLog(models.Model):
 
     bid_amount = models.DecimalField(max_digits = 10, decimal_places = 2)
     timestamp = models.DateTimeField(auto_now_add = True, db_index = True)
-
     team = models.ForeignKey(Team, on_delete = models.CASCADE)
     technology = models.ForeignKey(Technology, on_delete = models.CASCADE, related_name = 'bid_history')
-
     class Meta:
 
         ordering = ['-timestamp']

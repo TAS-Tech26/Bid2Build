@@ -9,13 +9,13 @@ class RedisService:
     """It has only 1 job - Push data to Redis queue"""
 
     @staticmethod
-    def broadcast_new_bid(tech_id, bid_amount, team_name):
+    def broadcast_new_bid(tech_id, bid_amount, team_name, bid_timer):
         """Pushes the new highest bid to the specific technology's WS group"""
 
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f'tech_{tech_id}',
-            {'type' : 'bid_update', 'payload' : {'tech_id' : tech_id, 'new_highest_bid' : bid_amount, 'highest_bidder_name' : team_name}}
+            {'type' : 'bid_update', 'payload' : {'tech_id' : tech_id, 'new_highest_bid' : bid_amount, 'highest_bidder_name' : team_name, 'bid_timer':bid_timer}}
         )
 
     @staticmethod
