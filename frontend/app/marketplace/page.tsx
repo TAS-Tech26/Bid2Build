@@ -14,18 +14,10 @@ interface Technology{
   description:string,
   status:Status,
   base_price:number,
-  current_price:number,
+  current_highest_bid:number,
   highest_bidder_id:number|null,
-  end:string,
+  end_time:string,
 }
-
-
-
-/* ─────────────────────────────────────────────
-   Auction Card Component
-───────────────────────────────────────────── */
-
-
 
 function AuctionCard({
   technology,
@@ -34,9 +26,23 @@ function AuctionCard({
   technology:Technology;
   timeLeft: number;
 }) {
+  timeLeft=Number(technology.end_time)-Date.now();
   const isLive = technology.status === "ACTIVE";
   const isCritical = isLive && timeLeft <= 60;
-  console.log(technology)
+  const router=useRouter()
+  const join_room=async()=>{
+    const token = localStorage.getItem("token");
+    try{
+         await b2bApi.post('api/join/', {tech_id:technology.id},{headers:{
+            Authorization:`Bearer ${token}`,
+          }
+      });
+      router.push(`/bidding/${technology.id}`)
+    }catch(e){
+      console.log('Unable to join room', e)
+    }
+  }
+
   return (
     <div
       className={`auction-card ${isLive ? "auction-card--live" : "auction-card--waiting"} ${isCritical ? "auction-card--critical" : ""}`}
@@ -58,7 +64,7 @@ function AuctionCard({
       <div className="stats-grid">
         <StatBox
           label="Current Highest Bid"
-          value={`${technology.current_price} CR`}
+          value={`${technology.current_highest_bid} CR`}
           accent={true}
           large={true}
         />
@@ -71,12 +77,13 @@ function AuctionCard({
           value={`${technology.teamsInRoom} Teams`}
           icon="👥"
         />*/}
-        <TimerBox timeLeft={timeLeft} isLive={isLive} critical={isCritical} />
+        <TimerBox timeLeft={timeLeft} isLive={isLive} critical={isCritical} technology={technology}/>
       </div>
 
       {/* CTA */}
-      <Link
-        href={`/bidding/${technology.id}`}
+      < button
+        //href={`/bidding/${technology.id}`}
+        onClick={join_room}
         className={`join-btn ${isLive ? "join-btn--live" : "join-btn--waiting"}`}
       >
         {isLive ? (
@@ -87,7 +94,7 @@ function AuctionCard({
         ) : (
           "AUCTION IS NOT ACTIVE"
         )}
-      </Link>
+      </button>
     </div>
   );
 }
@@ -156,11 +163,14 @@ function TimerBox({
   timeLeft,
   isLive,
   critical,
+  technology,
 }: {
   timeLeft: number;
   isLive: boolean;
   critical: boolean;
+  technology:Technology
 }) {
+  timeLeft=Number(technology.end_time)-Date.now();
   return (
     <div
       className={`stat-box timer-box ${
@@ -174,7 +184,7 @@ function TimerBox({
           critical ? "timer-value--critical" : ""
         }`}
       >
-        {isLive ? timeLeft : "--:--"}
+        {isLive ? String(timeLeft) : "--:--"}
       </p>
     </div>
   );
@@ -195,7 +205,7 @@ export default function MarketplacePage() {
       Math.max(
         0,
         Math.floor(
-          (new Date(a.end).getTime() - Date.now()) / 1000
+          (new Date(a.end_time).getTime() - Date.now()) / 1000
         )
       ),]))
   );
@@ -250,11 +260,11 @@ export default function MarketplacePage() {
       setTech(response.data.technologies);
        const initialTimers: Record<number, number> = {};
       response.data.forEach((item: Technology) => {
-        if (item.end) {
+        if (item.end_time) {
           initialTimers[item.id] = Math.max(
             0,
             Math.floor(
-              (new Date(item.end).getTime() - Date.now()) / 1000
+              (new Date(item.end_time).getTime() - Date.now()) / 1000
             )
           );
         }
