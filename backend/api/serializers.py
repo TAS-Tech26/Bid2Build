@@ -10,10 +10,9 @@ class BidSerializer(serializers.Serializer):
     bid_amount = serializers.DecimalField(max_digits = 10, decimal_places = 2)
     
 
-class ParticipantActionSerializer:
-
+class ParticipantActionSerializer(serializers.Serializer):
     tech_id = serializers.IntegerField()
-
+    
 
 class TechnologySerializer:
 

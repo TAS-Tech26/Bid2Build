@@ -22,39 +22,6 @@ import {
   Sparkles
 } from "lucide-react";
 
-const ownedAssets = [
-  {
-    name: "Computer Vision",
-    category: "Core Tech",
-    cost: 300,
-    marketValue: 390,
-    status: "Active",
-    iconCode: "cpu",
-  },
-  {
-    name: "Cloud Infrastructure",
-    category: "Business Resource",
-    cost: 150,
-    marketValue: 185,
-    status: "Operational",
-    iconCode: "cloud",
-  },
-  {
-    name: "Investor Network",
-    category: "Special Asset",
-    cost: 200,
-    marketValue: 260,
-    status: "Active",
-    iconCode: "users",
-  },
-];
-const teamData = {
-  rank: 12,
-  credits: 1150,
-  round: "Architect Phase",
-};
-
-
 export default function StudentDashboard() {
 
   const router = useRouter();
@@ -64,7 +31,6 @@ export default function StudentDashboard() {
 
 
   useEffect(() => {
-
     const storedTeam = localStorage.getItem("team_name");
     const token=localStorage.getItem("token");
     if(!token){
@@ -99,18 +65,29 @@ export default function StudentDashboard() {
     
   },[router]);
 
-  const getAssetIcon = (iconCode: string) => {
-    switch (iconCode) {
-      case "cpu":
-        return <Cpu className="h-5 w-5 text-amber-400 animate-pulse" />;
-      case "cloud":
-        return <Cloud className="h-5 w-5 text-cyan-400" />;
-      case "users":
-        return <Users className="h-5 w-5 text-[#8B5CF6]" />;
-      default:
-        return <Briefcase className="h-5 w-5 text-slate-400" />;
-    }
-  };
+  const [wonTechnologies, setWonTechnologies] = useState<any[]>([]);
+
+useEffect(() => {
+    const fetchWonTechnologies = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await b2bApi.get("api/won_technologies/",{headers: {Authorization: `Bearer ${token}`,},});
+            if(response.data.technologies){
+              setWonTechnologies(response.data.technologies);
+            }else{
+              console.log("No technologies won yet");
+            }
+        } catch (error) {
+            console.error(
+                "Failed to fetch won technologies:",
+                error
+            );
+        }
+    };
+
+    fetchWonTechnologies();
+}, []);
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -225,13 +202,6 @@ export default function StudentDashboard() {
 
       </header>
 
-
-
-
-
-
-
-
       {/* PROGRESS TIMELINE */}
       <section className="mb-12 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl p-8">
         <h2 className="text-sm font-bold uppercase tracking-widest text-[#E8C07D] mb-6">
@@ -295,12 +265,6 @@ export default function StudentDashboard() {
         </div>
       </section>
 
-
-
-
-
-
-
       {/* MAIN */}
 
       <section
@@ -346,7 +310,7 @@ export default function StudentDashboard() {
               </div>
 
               {/* Stat 2: Rank */}
-              <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-[#8B5CF6]/30 transition-all duration-300">
+             {/* <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-[#8B5CF6]/30 transition-all duration-300">
                 <div className="p-3 bg-[#8B5CF6]/10 rounded-xl text-[#8B5CF6]">
                   <Trophy className="h-6 w-6" />
                 </div>
@@ -354,7 +318,7 @@ export default function StudentDashboard() {
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Rank</p>
                   <p className="text-xl font-black text-[#8B5CF6] mt-1">#{teamData.rank}</p>
                 </div>
-              </div>
+              </div>*/}
 
               {/* Stat 3: Assets Owned */}
               <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-cyan-500/30 transition-all duration-300">
@@ -363,7 +327,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Assets Owned</p>
-                  <p className="text-xl font-black text-cyan-400 mt-1">{ownedAssets.length}</p>
+                  <p className="text-xl font-black text-cyan-400 mt-1">{wonTechnologies.length ? wonTechnologies.length :0}</p>
                 </div>
               </div>
 
@@ -374,7 +338,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Auction Wins</p>
-                  <p className="text-xl font-black text-emerald-400 mt-1">{ownedAssets.length}</p>
+                  <p className="text-xl font-black text-emerald-400 mt-1">{wonTechnologies.length ? wonTechnologies.length :0}</p>
                 </div>
               </div>
             </div>
@@ -403,7 +367,7 @@ export default function StudentDashboard() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {ownedAssets.map((asset) => (
+              {wonTechnologies.map((asset) => (
                 <div
                   key={asset.name}
                   className="
@@ -428,42 +392,40 @@ export default function StudentDashboard() {
                   <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-white/[0.02] blur-lg -z-10" />
 
                   {/* Header Row: Category Icon & Status Badge */}
-                  <div className="flex items-center justify-between mb-5">
+                 {/* <div className="flex items-center justify-between mb-5">
                     <div className="p-2.5 bg-white/[0.04] border border-white/10 rounded-xl">
                       {getAssetIcon(asset.iconCode)}
                     </div>
                     {getStatusBadge(asset.status)}
-                  </div>
+                  </div>*/}
 
                   {/* Body: Asset Title & Category Tag */}
                   <div className="mb-6">
                     <h3 className="text-lg font-bold text-white tracking-wide truncate" title={asset.name}>
                       {asset.name}
                     </h3>
-                    <span className="inline-block mt-2 text-[10px] font-semibold text-slate-400 bg-white/5 px-2.5 py-1 rounded-md">
+                    {/*<span className="inline-block mt-2 text-[10px] font-semibold text-slate-400 bg-white/5 px-2.5 py-1 rounded-md">
                       {asset.category}
-                    </span>
+                    </span>*/}
                   </div>
-
                   {/* Footer Row: Purchase Cost vs Market Value */}
                   <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Purchase</p>
-                      <p className="text-sm font-extrabold text-slate-300 mt-0.5">{asset.cost} <span className="text-xs text-slate-500 font-medium">CR</span></p>
+                      <p className="text-sm font-extrabold text-slate-300 mt-0.5">{asset.winning_bid} <span className="text-xs text-slate-500 font-medium">CR</span></p>
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] text-[#E8C07D] font-bold uppercase tracking-wider flex items-center justify-end gap-1">
-                        Value
+                        Base Value
                         <TrendingUp className="h-3 w-3 text-emerald-400" />
                       </p>
-                      <p className="text-sm font-extrabold text-[#E8C07D] mt-0.5">{asset.marketValue} <span className="text-xs text-[#E8C07D]/50 font-medium">CR</span></p>
+                      <p className="text-sm font-extrabold text-[#E8C07D] mt-0.5">{asset.base_price} <span className="text-xs text-[#E8C07D]/50 font-medium">CR</span></p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
         </div>
 
         {/* RIGHT COLUMN: ACTION PANEL */}

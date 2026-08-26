@@ -10,10 +10,13 @@ class BidConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         # Extract tech_id from URL routing
         self.tech_id = self.scope['url_route']['kwargs']['tech_id']
-        self.room_group_name = f'tech_{self.tech_id}'
-
+        self.room_group_name = (f'tech_{self.tech_id}')
+        print("Web socket connection attempted")
+        print("SCOPE:", self.scope)
         await self.channel_layer.group_add(self.room_group_name, self.channel_name) # Join the tech-specific Redis group
         await self.accept()
+        print(f"WEBSOCKET ACCEPTED FOR TECH {self.tech_id}")
+
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)

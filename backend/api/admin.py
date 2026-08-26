@@ -25,11 +25,11 @@ class TeamAdmin(admin.ModelAdmin):
 @admin.register(Technology)
 class TechnologyAdmin(admin.ModelAdmin):
 
-    list_display = ('name', 'status', 'base_price', 'current_highest_bid', 'highest_bidder', 'is_active_timer')
+    list_display = ('name', 'status', 'base_price', 'current_highest_bid', 'highest_bidder', 'is_active_timer', 'auction_duration')
     list_filter = ('status',)
     search_fields = ('name',)
 
-    readonly_fields = ('current_highest_bid', 'highest_bidder', 'end_time')
+    readonly_fields = ('current_highest_bid', 'highest_bidder')
 
     def is_active_timer(self, obj):
         if obj.end_time and timezone.now() > obj.end_time:

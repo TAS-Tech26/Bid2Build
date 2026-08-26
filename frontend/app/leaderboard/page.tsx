@@ -6,21 +6,21 @@ import Navbar from "@/components/Navbar";
 import Link from 'next/link'
 import {useRouter} from 'next/navigation'
 import {useEffect, useRef, useState} from 'react'
+import b2bApi from '../services/api'
 
-const leaderboard = [
-  { rank: 1,  prevRank: 2,  team: "Team Titan",   quizScore: 29, credits: 1200, assets: 0 },
-  { rank: 2,  prevRank: 1,  team: "Team Nova",    quizScore: 28, credits: 1200, assets: 0 },
-  { rank: 3,  prevRank: 3,  team: "Team Orbit",   quizScore: 28, credits: 1200, assets: 0 },
-  { rank: 4,  prevRank: 6,  team: "Team Phoenix", quizScore: 27, credits: 1200, assets: 0 },
-  { rank: 5,  prevRank: 5,  team: "Team Quantum", quizScore: 27, credits: 1200, assets: 0 },
-  { rank: 6,  prevRank: 4,  team: "Team Nexus",   quizScore: 26, credits: 1200, assets: 0 },
-  { rank: 7,  prevRank: 7,  team: "Team Atlas",   quizScore: 26, credits: 1200, assets: 0 },
-  { rank: 8,  prevRank: 10, team: "Team Eclipse", quizScore: 25, credits: 1200, assets: 0 },
-  { rank: 9,  prevRank: 9,  team: "Team Vertex",  quizScore: 25, credits: 1200, assets: 0 },
-  { rank: 10, prevRank: 8,  team: "Team Zenith",  quizScore: 25, credits: 1200, assets: 0 },
-  { rank: 11, prevRank: 11, team: "Team Ares",    quizScore: 24, credits: 1150, assets: 0 },
-  { rank: 12, prevRank: 12, team: "Team Helios",  quizScore: 24, credits: 1150, assets: 0 },
-]
+interface SecuredTechnology {
+  tech_id: number;
+  name: string;
+  winning_bid: string;
+}
+
+interface LeaderboardTeam {
+  team_id: number;
+  team_name: string;
+  available_credits: string;
+  escrow_credits: string;
+  secured_technologies: SecuredTechnology[];
+}
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span title="Gold" style={{ fontSize: "1.4rem" }}>🥇</span>;
@@ -48,12 +48,13 @@ function MovementArrow({ current, prev }: { current: number; prev: number }) {
 export default function LeaderboardPage() {
   const router = useRouter();
   const [currentTeam, setCurrentTeam] = useState("");
-  const [credits, setCredits] = useState("1150");
+  const [credits, setCredits] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-
+  const [leaderboard, setLeaderBoard] = useState<LeaderboardTeam[]>([]);
+  const [loading, setLoading]=useState(true)
   useEffect(() => {
-    const storedTeam = localStorage.getItem("team");
+    const storedTeam = localStorage.getItem("team_name");
     const token=localStorage.getItem("token");
     if (!storedTeam) {
       router.push("/login");
@@ -64,21 +65,83 @@ export default function LeaderboardPage() {
       return;
     }
     try{
-      const team=JSON.parse(storedTeam);
-      setCurrentTeam(team.name);
-      setCredits(team.credits);
+      setCurrentTeam(storedTeam);
     }
     catch(error){
       console.log("Invalid team data", error);
-      localStorage.removeItem("team");
-      localStorage.removeItem("token");
+      //localStorage.removeItem("team");
+      //localStorage.removeItem("token");
       router.push("/login");
     }
   }, [router]);
 
-  const filtered = leaderboard.filter((t) =>
-    t.team.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(()=>{
+  const fetch_credits=async()=>{
+        try{
+        const token=localStorage.getItem("token");
+        const response= await b2bApi.get('api/fetchcredits/',{
+             headers:{
+              Authorization:`Bearer ${token}`,
+            }},);
+      setCredits(response.data.available_credits);
+        //console.log(response.data);
+      }
+      catch(e){
+        console.log("Failed to fetch team credits, error:", e);
+      }
+    }
+    fetch_credits();
+    }, [router]);
+
+  useEffect(()=>{
+    const getLeaderboard = async()=>{
+      const token=localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+      try{
+        setLoading(true);
+        const response=await b2bApi.get('api/leaderboard/', {headers:{Authorization:`Bearer ${token}`}})
+        console.log("Successfully fetched leaderboard")
+        setLeaderBoard(response.data.leaderboard)
+      }catch(e:any){
+        console.error("Error fetching leaderboard, error:",e.response?.data || e);
+        if (e.response?.status === 401 || e.response?.status === 403){
+          localStorage.removeItem("token");
+          router.push("/login");
+        }
+      }finally{
+      setLoading(false);
+      }
+    }
+    getLeaderboard();
+  },[]);
+
+ const rankedLeaderboard = leaderboard.map((team, index) => ({
+      ...team,
+      rank: index + 1,
+    })
   );
+
+const filtered = rankedLeaderboard.filter((team) =>
+      team.team_name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+  );
+
+const currentTeamData = rankedLeaderboard.find(
+      (team) =>
+        team.team_name === currentTeam
+    );
+
+const currentTeamRank = currentTeamData?.rank ?? null;
+const topCredits=rankedLeaderboard.length > 0 ? Math.max(
+          ...rankedLeaderboard.map(
+            (team) => Number(team.available_credits)
+          )
+        )
+      : 0;
 
   const podiumColors = [
     {
@@ -379,11 +442,11 @@ export default function LeaderboardPage() {
               <p className="lb-subtitle">Architect Phase • Round 2</p>
               <div className="lb-stats">
                 <div className="lb-stat-pill">Teams <span>{leaderboard.length}</span></div>
-                <div className="lb-stat-pill">Top Credits <span>{Math.max(...leaderboard.map(t => t.credits))}</span></div>
+                <div className="lb-stat-pill">Top Credits <span>{topCredits.toLocaleString()}</span></div>
                 {currentTeam && (
                   <div className="lb-stat-pill">
                     Your Rank <span>
-                      #{leaderboard.find(t => t.team === currentTeam)?.rank ?? "—"}
+                      #{currentTeamRank ? `#${currentTeamRank}` : "—"}
                     </span>
                   </div>
                 )}
@@ -410,21 +473,21 @@ export default function LeaderboardPage() {
           {/* Podium — only when not searching */}
           {!searchTerm && (
             <div className="lb-podium">
-              {leaderboard.slice(0, 3).map((team, i) => (
+              {rankedLeaderboard.slice(0, 3).map((team, i) => (
                 <div
-                  key={team.rank}
+                  key={team.team_id}
                   className={`podium-card ${podiumColors[i].border} ${podiumColors[i].bg} ${podiumColors[i].glow} shadow-xl`}
                 >
                   <span className="podium-medal">
                     {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                   </span>
-                  <h2 className={`podium-name ${podiumColors[i].text}`}>{team.team}</h2>
-                  {team.team === currentTeam && (
+                  <h2 className={`podium-name ${podiumColors[i].text}`}>{team.team_name}</h2>
+                  {team.team_name === currentTeam && (
                     <span className="you-badge">YOU</span>
                   )}
-                  <p className="podium-stat">Quiz Score: {team.quizScore}</p>
+                  
                   <p className={`podium-credits ${podiumColors[i].text}`}>
-                    ◈ {team.credits} credits
+                    ◈ {" "}{Number(team.available_credits).toLocaleString()}{" "} credits
                   </p>
                 </div>
               ))}
@@ -438,14 +501,16 @@ export default function LeaderboardPage() {
                 <tr className="lb-thead-row">
                   <th style={{ textAlign: "left" }}>Rank</th>
                   <th style={{ textAlign: "left" }}>Team</th>
-                  <th>Movement</th>
-                  <th>Quiz Score</th>
-                  <th>Credits</th>
+                  <th>Available Credits</th>
+                  <th>Escrow</th>
                   <th>Assets</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="lb-empty">Loading Leaderboard...</td>
+                  </tr>):filtered.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="lb-empty">
                       No teams match &quot;{searchTerm}&quot;
@@ -453,11 +518,11 @@ export default function LeaderboardPage() {
                   </tr>
                 ) : (
                   filtered.map((team) => {
-                    const isMe = team.team === currentTeam;
+                    const isMe = team.team_name === currentTeam;
                     const isTop10 = team.rank <= 10;
                     return (
                       <tr
-                        key={team.rank}
+                        key={team.team_id}
                         className={`lb-row${isMe ? " is-me" : ""}${isTop10 ? " top-ten" : ""}`}
                       >
                         <td>
@@ -465,16 +530,22 @@ export default function LeaderboardPage() {
                         </td>
                         <td>
                           <span className="team-name-cell">
-                            {team.team}
+                            {team.team_name}
                             {isMe && <span className="you-badge">YOU</span>}
                           </span>
                         </td>
-                        <td>
-                          <MovementArrow current={team.rank} prev={team.prevRank} />
+                        <td className="credits-cell">{Number(team.available_credits).toLocaleString()}</td>
+                        <td>{Number(team.escrow_credits).toLocaleString()}</td>
+                        <td>{team.secured_technologies.length ===0 ? (
+                          <span style={{color: "#475569",}}>None</span>) : (
+                            <div style={{display: "flex",flexDirection: "column",gap: "4px",}}>
+                              {team.secured_technologies.map((technology) => (
+                                <span key={technology.tech_id} style={{color: "#E8C07D",}}>
+                                  {technology.name}
+                                </span>))}
+                            </div>
+                          )}
                         </td>
-                        <td style={{ color: "#cbd5e1" }}>{team.quizScore}</td>
-                        <td className="credits-cell">{team.credits}</td>
-                        <td style={{ color: "#94a3b8" }}>{team.assets}</td>
                       </tr>
                     );
                   })
@@ -482,7 +553,6 @@ export default function LeaderboardPage() {
               </tbody>
             </table>
           </div>
-
         </div>
       </main>
     </>

@@ -1,6 +1,4 @@
 # views.py
-
-
 from datetime import timedelta
 from django.conf import settings
 from django.db import transaction
@@ -16,50 +14,40 @@ from .redis_service import RedisService
 from .serializers import BidSerializer, LeaderboardSerializer, ParticipantActionSerializer, TechnologySerializer
 
 import json, hmac, requests
+
+
 @api_view(['POST'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def place_bid_view(request):
     serializer = BidSerializer(data = request.data)
-
     if not serializer.is_valid():
-
         return JsonResponse({'error' : serializer.errors}, status = 400)
-
     data = serializer.validated_data
-
     success, message = BidHandler.process_transaction(team_code = request.user.team_code, tech_id = data['tech_id'], bid_amount = data['bid_amount'])
-
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @api_view(['POST'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def join_auction_view(request):
-    serializer = ParticipantActionSerializer(request.body)
-
+    serializer = ParticipantActionSerializer(data=request.data)
     if not serializer.is_valid():
-
         return JsonResponse({'error' : serializer.errors}, status = 400)
-
     data = serializer.validated_data
     success, message = ParticipantHandler.join_auction(team_code = request.user.team_code, tech_id = data['tech_id'])
-
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
+
 
 @api_view(['POST'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def back_out_auction_view(request):
-    serializer = ParticipantActionSerializer(request.body)
-
+    serializer = ParticipantActionSerializer(data=request.data)
     if not serializer.is_valid():
-
         return JsonResponse({'error' : serializer.errors}, status = 400)
-
     data = serializer.validated_data
     success, message = ParticipantHandler.back_out_auction(team_code = request.user.team_code, tech_id = data['tech_id'])
-
     return JsonResponse({'message' : message} if success else {'error' : message}, status = 200 if success else 400)
 
 @api_view(['GET'])
@@ -73,6 +61,25 @@ def get_all_technologies_view(request):
 @api_view(['GET'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
+def get_won_technologies_view(request):
+    team = Team.objects.get(team_code=request.user.team_code)
+    technologies = team.won_technologies.all().order_by('id')
+    data = [
+        {
+            'id': tech.id,
+            'name': tech.name,
+            'description': tech.description,
+            'base_price': str(tech.base_price),
+            'winning_bid': str(tech.current_highest_bid),
+            'status': tech.status,
+        }
+        for tech in technologies
+    ]
+    return JsonResponse({'technologies': data}, status=200)
+
+@api_view(['GET'])
+@authentication_classes([HubJWTAuthentication])
+@permission_classes([IsAuthenticated])
 def fetch_credits(request):
     team=Team.objects.get(team_code=request.user.team_code)
     return JsonResponse({'available_credits':team.available_credits})
@@ -82,9 +89,7 @@ def fetch_credits(request):
 @permission_classes([IsAuthenticated])
 def get_leaderboard_view(request):
     teams = Team.objects.prefetch_related('won_technologies').all().order_by('-available_credits')
-
     data = LeaderboardSerializer.serialize_many(teams)
-
     return JsonResponse({'leaderboard' : data}, status = 200)
 
 @api_view(['GET'])
@@ -94,18 +99,27 @@ def get_room_details_view(request, tech_id):
     try:
         tech = Technology.objects.get(id = tech_id)
     except Technology.DoesNotExist:
-
         return JsonResponse({'error' : "Technology not found"}, status = 404)
 
     # Fetch active teams in this specific room
     active_participants = AuctionParticipant.objects.filter(technology = tech, is_active = True).select_related('team')
-    teams_in_room = [{'team_id' : p.team.id, 'team_name' : p.team.name} for p in active_participants]
-
-    recent_bids = BidLog.objects.filter(technology = tech).select_related('team')[:20] # Fetch the latest 20 bids
-
+    teams_in_room = [{'team_id' : p.team.id, 'team_name' : p.team.name, 'is_active':p.is_active} for p in active_participants]
+    recent_bids = BidLog.objects.filter(technology = tech).select_related('team')[:10] # Fetch the latest 10 bids
     bid_history = [{'team_name' : bid.team.name, 'amount' : str(bid.bid_amount), 'timestamp' : bid.timestamp.isoformat()} for bid in recent_bids]
 
-    return JsonResponse({'tech_id' : tech.id, 'teams_in_room' : teams_in_room, 'bid_history' : bid_history}, status = 200)
+    return JsonResponse({'technology' :{'id':tech.id, 'name':tech.name, 'status':tech.status, 'base_price':float(tech.base_price),
+                        'current_highest_bid':float(tech.current_highest_bid),
+                        'highest_bidder': ({
+                             'id': tech.highest_bidder.id,
+                             'name': tech.highest_bidder.name
+                             } if tech.highest_bidder else None),
+                        'end_time': (tech.end_time.isoformat()
+                                    if tech.end_time
+                                    else None
+                                    ),
+                         },
+                         'teams_in_room' : teams_in_room,
+                         'bid_history' : bid_history}, status = 200)
 
 @api_view(['POST'])
 def sync_wallets_view(request):
@@ -157,16 +171,15 @@ def start_auction_view(request, tech_id):
                 return JsonResponse({'error' : f"Cannot start auction. Current status is {tech.status}"}, status = 400)
 
             tech.status = 'ACTIVE'
-            tech.end_time = timezone.now() + timedelta(minutes = 2)
-            tech.save(update_fields = ['status', 'end_time'])
-
+            tech.end_time = timezone.now() + timedelta(minutes = tech.auction_duration)
+            tech.bid_timer_end = None
+            tech.save(update_fields = ['status', 'end_time', 'bid_timer'])
+            
             end_time_iso = tech.end_time.isoformat()
-
             transaction.on_commit(lambda: RedisService.broadcast_auction_started(tech_id = tech.id, end_time = end_time_iso))
 
-        return JsonResponse({'message' : f"Auction for tech {tech_id} started successfully.", 'end_time' : end_time_iso}, status = 200)
+        return JsonResponse({'message' : f"Auction for tech {tech_id} started successfully.", 'end_time' : end_time_iso, 'auction_duration':tech.auction_duration}, status = 200)
     except Technology.DoesNotExist:
-
         return JsonResponse({'error' : "Technology not found."}, status = 404)
 
 @api_view(['POST'])
