@@ -6,22 +6,25 @@ from django.urls import path
 
 from api.views import (
     back_out_auction_view, emergency_reset_auction_view, get_all_technologies_view, get_leaderboard_view, get_room_details_view, join_auction_view, place_bid_view,
-    push_final_results_view, settle_auction_view, start_auction_view, sync_wallets_view
+    push_final_results_view, settle_auction_view, start_auction_view, sync_wallets_view, fetch_credits, get_won_technologies_view
 )
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('api/admin/sync-wallets/', sync_wallets_view, name = 'sync_wallets'),
+
     path('api/admin/start-auction/<int:tech_id>/', start_auction_view, name = 'start_auction'),
     path('api/admin/settle-auction/<int:tech_id>/', settle_auction_view, name = 'settle_auction'),
 
-    path('api/login/', login, name='login'),
+    
+    path('api/fetchcredits/', fetch_credits, name='fetch_credits'),
     path('api/bid/', place_bid_view, name = 'place_bid'),
     path('api/join/', join_auction_view, name = 'join_auction'),
     path('api/back-out/', back_out_auction_view, name = 'back_out_auction'),
-
     path('api/items/', get_all_technologies_view, name = 'get_all_technologies'),
+    path('api/won_technologies/', get_won_technologies_view, name='won_tech'),
     path('api/leaderboard/', get_leaderboard_view, name = 'get_leaderboard'),
     path('api/items/<int:tech_id>/room/', get_room_details_view, name = 'get_room_details'),
 
