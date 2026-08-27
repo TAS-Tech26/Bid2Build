@@ -16,7 +16,6 @@ urlpatterns = [
     path('api/admin/start-auction/<int:tech_id>/', start_auction_view, name = 'start_auction'),
     path('api/admin/settle-auction/<int:tech_id>/', settle_auction_view, name = 'settle_auction'),
 
-    path('api/login/', login, name='login'),
     path('api/bid/', place_bid_view, name = 'place_bid'),
     path('api/join/', join_auction_view, name = 'join_auction'),
     path('api/back-out/', back_out_auction_view, name = 'back_out_auction'),

@@ -39,8 +39,18 @@ class BidHandler:
 
                     return False, "Bid must be strictly higher than the current highest bid."
 
-                # Lock bidder
-                team = Team.objects.select_for_update().get(team_code = team_code)
+                # To prevent deadlock, get IDs first and lock in consistent order
+                current_team = Team.objects.get(team_code = team_code)
+                team_ids_to_lock = [current_team.id]
+                
+                if tech.highest_bidder_id and tech.highest_bidder_id != current_team.id:
+                    team_ids_to_lock.append(tech.highest_bidder_id)
+                    
+                team_ids_to_lock.sort()
+                
+                # Lock teams
+                locked_teams = {t.id: t for t in Team.objects.select_for_update().filter(id__in = team_ids_to_lock)}
+                team = locked_teams[current_team.id]
 
                 if tech.highest_bidder_id == team.id:
 
@@ -59,7 +69,7 @@ class BidHandler:
 
                 # Outbid cond - Escrow refund
                 if tech.highest_bidder_id:
-                    previous_team = Team.objects.select_for_update().get(id = tech.highest_bidder_id)
+                    previous_team = locked_teams[tech.highest_bidder_id]
                     previous_team.escrow_credits -= tech.current_highest_bid
                     previous_team.available_credits += tech.current_highest_bid
                     previous_team.save()
