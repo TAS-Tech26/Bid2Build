@@ -36,7 +36,7 @@ def place_bid_view(request):
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def join_auction_view(request):
-    serializer = ParticipantActionSerializer(request.body)
+    serializer = ParticipantActionSerializer(request.data)
 
     if not serializer.is_valid():
 
@@ -51,7 +51,7 @@ def join_auction_view(request):
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def back_out_auction_view(request):
-    serializer = ParticipantActionSerializer(request.body)
+    serializer = ParticipantActionSerializer(request.data)
 
     if not serializer.is_valid():
 
@@ -74,14 +74,15 @@ def get_all_technologies_view(request):
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def fetch_credits(request):
-    team=Team.objects.get(team_code=request.user.team_code)
-    return JsonResponse({'available_credits':team.available_credits})
+    team = Team.objects.get(team_code = request.user.team_code)
+
+    return JsonResponse({'available_credits': team.available_credits})
 
 @api_view(['GET'])
 @authentication_classes([HubJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def get_leaderboard_view(request):
-    teams = Team.objects.prefetch_related('won_technologies').all().order_by('-available_credits')
+    teams = Team.objects.prefetch_related('purchased_assets__technology').all().order_by('-available_credits')
 
     data = LeaderboardSerializer.serialize_many(teams)
 
@@ -200,12 +201,24 @@ def settle_auction_view(request, tech_id):
             winner.escrow_credits -= tech.current_highest_bid
             winner.save(update_fields = ['escrow_credits'])
 
-            tech.status = 'SOLD'
-            tech.save(update_fields = ['status'])
+            from api.models import AssetPurchase
+            AssetPurchase.objects.create(team=winner, technology=tech, purchase_price=tech.current_highest_bid)
 
             winner_name = winner.name
 
-            transaction.on_commit(lambda: RedisService.broadcast_auction_ended(tech_id = tech.id, status = 'SOLD', winner_name = winner_name))
+            if tech.stock > 1:
+                tech.stock -= 1
+                tech.status = 'QUEUED'
+                tech.highest_bidder = None
+                tech.current_highest_bid = 0.00
+                tech.end_time = None
+            else:
+                tech.stock = 0
+                tech.status = 'SOLD'
+
+            tech.save(update_fields = ['status', 'stock', 'highest_bidder', 'current_highest_bid', 'end_time'])
+
+            transaction.on_commit(lambda t_id=tech.id, stat=tech.status: RedisService.broadcast_auction_ended(tech_id = t_id, status = stat, winner_name = winner_name))
 
         return JsonResponse({'message' : f"Auction settled. Won by {winner_name}."}, status = 200)
     except Technology.DoesNotExist:
@@ -227,12 +240,12 @@ def push_final_results_view(request):
 
         return JsonResponse({'error' : "Unauthorized admin action."}, status = 403)
 
-    teams = Team.objects.prefetch_related('won_technologies').all().order_by('-available_credits')
+    teams = Team.objects.prefetch_related('purchased_assets__technology').all().order_by('-available_credits')
 
     results = []
 
     for rank, team in enumerate(teams, start = 1):
-        assets_won = ", ".join([tech.name for tech in team.won_technologies.all()])
+        assets_won = ", ".join([purchase.technology.name for purchase in team.purchased_assets.all()])
 
         if not assets_won:
             assets_won = "No assets won"

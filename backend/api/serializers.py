@@ -10,7 +10,7 @@ class BidSerializer(serializers.Serializer):
     bid_amount = serializers.DecimalField(max_digits = 10, decimal_places = 2)
     
 
-class ParticipantActionSerializer:
+class ParticipantActionSerializer(serializers.Serializer):
 
     tech_id = serializers.IntegerField()
 
@@ -42,5 +42,5 @@ class LeaderboardSerializer:
             'team_name' : team.name,
             'available_credits' : str(team.available_credits),
             'escrow_credits' : str(team.escrow_credits),
-            'secured_technologies' : [{'tech_id' : tech.id, 'name' : tech.name, 'winning_bid' : str(tech.current_highest_bid)} for tech in team.won_technologies.all()]
+            'secured_technologies' : [{'tech_id' : purchase.technology.id, 'name' : purchase.technology.name, 'winning_bid' : str(purchase.purchase_price)} for purchase in team.purchased_assets.all()]
         } for team in team_queryset]

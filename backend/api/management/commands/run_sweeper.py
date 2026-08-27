@@ -42,7 +42,10 @@ class Command(BaseCommand):
         if tech.highest_bidder:
             tech.status = 'SOLD'
 
-            winner = tech.highest_bidder
+            # Fetch winner with a lock to prevent wallet race conditions
+            from api.models import Team
+            
+            winner = Team.objects.select_for_update().get(id = tech.highest_bidder_id)
             winner.escrow_credits -= tech.current_highest_bid
             winner.save(update_fields = ['escrow_credits'])
 
