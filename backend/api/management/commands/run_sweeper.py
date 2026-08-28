@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from api.models import Technology
+from api.models import AssetPurchase, Team, Technology
 from api.redis_service import RedisService
 
 import logging, time
@@ -31,31 +31,51 @@ class Command(BaseCommand):
 
     def sweep_expired_auctions(self):
         now = timezone.now()
+        
+        # Fetch IDs first to avoid long-running locks on multiple rows
+        expired_tech_ids = list(Technology.objects.filter(status = 'ACTIVE', end_time__lte = now).values_list('id', flat = True))
 
+        for tech_id in expired_tech_ids:
+            try:
+                self.finalize_auction_atomic(tech_id)
+            except Exception as e:
+                logger.error(f"Failed to finalize tech {tech_id}: {e}")
+
+    def finalize_auction_atomic(self, tech_id):
         with transaction.atomic():
-            expired_techs = Technology.objects.select_for_update(skip_locked = True).filter(status = 'ACTIVE', end_time__lte = now)
+            try:
+                tech = Technology.objects.select_for_update(skip_locked = True).get(id = tech_id, status = 'ACTIVE')
+            except Technology.DoesNotExist:
+                return # Might have been finalized by another process or view
 
-            for tech in expired_techs:
-                self.finalize_auction(tech)
+            if tech.highest_bidder:
+                # Fetch winner with a lock to prevent wallet race conditions    
+                winner = Team.objects.select_for_update().get(id = tech.highest_bidder_id)
+                winner.escrow_credits -= tech.current_highest_bid
+                winner.save(update_fields = ['escrow_credits'])
 
-    def finalize_auction(self, tech):
-        if tech.highest_bidder:
-            tech.status = 'SOLD'
+                AssetPurchase.objects.create(team = winner, technology = tech, purchase_price = tech.current_highest_bid)
 
-            # Fetch winner with a lock to prevent wallet race conditions
-            from api.models import Team
-            
-            winner = Team.objects.select_for_update().get(id = tech.highest_bidder_id)
-            winner.escrow_credits -= tech.current_highest_bid
-            winner.save(update_fields = ['escrow_credits'])
+                winner_name = winner.name
 
-            winner_name = winner.name
-        else:
-            tech.status = 'UNSOLD'
-            winner_name = None
+                if tech.stock > 1:
+                    tech.stock -= 1
+                    tech.status = 'QUEUED'
+                    tech.highest_bidder = None
+                    tech.current_highest_bid = 0.00
+                    tech.end_time = None
+                else:
+                    tech.stock = 0
+                    tech.status = 'SOLD'
+            else:
+                tech.status = 'UNSOLD'
+                tech.highest_bidder = None
+                tech.current_highest_bid = 0.00
+                tech.end_time = None
+                winner_name = None
 
-        tech.save(update_fields = ['status'])
+            tech.save(update_fields = ['status', 'stock', 'highest_bidder', 'current_highest_bid', 'end_time'])
 
-        RedisService.broadcast_auction_ended(tech_id = tech.id, winner_name = winner_name, status = tech.status)
+            transaction.on_commit(lambda t=tech.id, w=winner_name, s=tech.status: RedisService.broadcast_auction_ended(tech_id = t, winner_name = w, status = s))
 
-        print(f"Finalized tech {tech.id} as {tech.status}.")
+            print(f"Finalized tech {tech.id} as {tech.status}.")

@@ -1,399 +1,151 @@
-"use client";
+"use client"
 
-import { useMemo, useState } from "react";
+import { useState } from 'react'
+import AppShell from '@/components/AppShell'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { b2bApi } from '@/app/services/api'
+import { ShieldAlert, AlertTriangle } from 'lucide-react'
 
-const disruptions = [
+const DISRUPTIONS = [
   {
-    id: 1,
-    title: "CEO Swap",
-    type: "Team",
-    description:
-      "Presenter must swap roles with the quietest teammate.",
-    status: "READY",
-    responded: 52,
+    id: "ai-trust",
+    title: "AI Trust Crisis",
+    description: "A massive wave of AI-generated misinformation and deepfakes has caused public distrust and stricter regulations.",
+    affected_teams: "AI Assistant, Secure Login, Legal Team",
+    expected_adaptation: "Introduce AI safety measures, content verification, user authentication, or a human-first trust strategy."
   },
   {
-    id: 2,
-    title: "Cloud Outage",
-    type: "Infrastructure",
-    description:
-      "Teams without Cloud Infrastructure must design an offline mode.",
-    status: "READY",
-    responded: 47,
+    id: "cloud-outage",
+    title: "Cloud Server Outage",
+    description: "A major cloud provider suffers a global outage, making many online services inaccessible.",
+    affected_teams: "Cloud Servers, Smart Devices",
+    expected_adaptation: "Design an offline mode, backup infrastructure, or local data storage solution."
   },
   {
-    id: 3,
-    title: "Deepfake Panic",
-    type: "Security",
-    description:
-      "Teams must adapt their startup to restore user trust.",
-    status: "READY",
-    responded: 41,
+    id: "data-privacy",
+    title: "New Data Privacy Law",
+    description: "The government introduces strict data privacy regulations overnight, limiting data collection and usage.",
+    affected_teams: "Customer Data, AI Assistant, Legal Team",
+    expected_adaptation: "Modify data collection policies, obtain user consent, redesign workflows for compliance."
   },
-];
+  {
+    id: "competitor-launch",
+    title: "Major Competitor Launch",
+    description: "A global tech company launches a product almost identical to yours just before your release.",
+    affected_teams: "All Teams",
+    expected_adaptation: "Differentiate your startup through unique features, pricing, branding, customer experience, or niche targeting."
+  },
+  {
+    id: "funding-crisis",
+    title: "Funding Crisis",
+    description: "An economic downturn causes investors to withdraw funding, forcing startups to operate on tighter budgets.",
+    affected_teams: "Government Funding, Investor Access",
+    expected_adaptation: "Reduce costs, prioritise core features, revise the business model, or identify alternative revenue streams."
+  },
+  {
+    id: "viral-success",
+    title: "Overnight Viral Success",
+    description: "Your startup unexpectedly gains millions of users overnight after going viral on social media.",
+    affected_teams: "Cloud Servers, Marketing Team, Business Mentor",
+    expected_adaptation: "Explain how your startup will scale infrastructure, customer support, operations, and long-term growth while maintaining service quality."
+  }
+]
 
-export default function DisruptionsPage() {
+export default function AdminDisruptions() {
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  const [search, setSearch] = useState("");
+  const triggerDisruption = async (disruption: typeof DISRUPTIONS[0]) => {
+    if (!window.confirm(`Are you sure you want to trigger "${disruption.title}"? This will broadcast to all teams immediately.`)) {
+      return
+    }
 
-  const cards = useMemo(() => {
-
-    return disruptions.filter(item =>
-      item.title.toLowerCase().includes(search.toLowerCase())
-    );
-
-  }, [search]);
+    setLoadingId(disruption.id)
+    try {
+      await b2bApi.post('admin/trigger-disruption/', {
+        title: disruption.title,
+        description: disruption.description,
+        affected_teams: disruption.affected_teams,
+        expected_adaptation: disruption.expected_adaptation
+      })
+      alert(`Successfully broadcasted: ${disruption.title}`)
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to trigger disruption.")
+    } finally {
+      setLoadingId(null)
+    }
+  }
 
   return (
+    <AppShell role="admin" active="admin-disruptions">
+      <div className="space-y-8 max-w-[1400px] mx-auto w-full">
+        <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-end">
+          <div>
+            <h1 className="text-4xl font-black text-destructive flex items-center gap-3">
+              <ShieldAlert className="w-10 h-10" />
+              Market Disruptions
+            </h1>
+            <p className="text-muted-foreground mt-2 text-[10px] font-bold tracking-[0.2em] uppercase">
+              Global Event Triggers
+            </p>
+          </div>
+        </div>
 
-    <main className="space-y-8">
-
-      {/* Header */}
-
-      <div className="flex justify-between items-center">
-
-        <div>
-
-          <h1
-            className="
-            text-5xl
-            font-black
-            bg-gradient-to-r
-            from-white
-            via-red-400
-            to-[#E8C07D]
-            bg-clip-text
-            text-transparent
-            "
-          >
-            Market Disruptions
-          </h1>
-
-          <p className="text-slate-400 mt-2">
-            Control every live disruption from one place.
+        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive font-mono text-sm flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <p>
+            <strong>WARNING:</strong> Triggering a disruption will immediately broadcast a global notification to all participants currently online. 
+            Only ONE disruption should be triggered on the day of the event.
           </p>
-
         </div>
 
-        <button
-          className="
-          rounded-2xl
-          bg-gradient-to-r
-          from-red-500
-          to-[#E8C07D]
-          px-8
-          py-4
-          font-bold
-          text-black
-          "
-        >
-          Broadcast Announcement
-        </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {DISRUPTIONS.map((disruption) => (
+            <Card key={disruption.id} className="flex flex-col bg-card/60 backdrop-blur-xl border-border hover:border-destructive/50 transition-colors">
+              <CardHeader className="pb-4 border-b border-border/50">
+                <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+                  {disruption.title}
+                </CardTitle>
+              </CardHeader>
 
-      </div>
+              <CardContent className="space-y-4 pt-6 flex-grow">
+                <p className="text-sm text-muted-foreground">
+                  {disruption.description}
+                </p>
 
-      {/* KPIs */}
+                <div className="space-y-2 pt-2">
+                  <span className="text-[10px] text-primary font-bold uppercase tracking-widest block">
+                    Most Affected Teams (Assets)
+                  </span>
+                  <span className="font-mono text-xs text-foreground block">
+                    {disruption.affected_teams}
+                  </span>
+                </div>
 
-      <div className="grid grid-cols-4 gap-6">
+                <div className="space-y-2 pt-2">
+                  <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest block">
+                    Expected Adaptation
+                  </span>
+                  <span className="font-mono text-xs text-foreground block">
+                    {disruption.expected_adaptation}
+                  </span>
+                </div>
+              </CardContent>
 
-        <KPICard
-          title="Disruptions"
-          value="3"
-        />
-
-        <KPICard
-          title="Teams Responded"
-          value="52"
-        />
-
-        <KPICard
-          title="Time Left"
-          value="15:00"
-        />
-
-        <KPICard
-          title="Status"
-          value="READY"
-        />
-
-      </div>
-
-      {/* Search */}
-
-      <input
-
-        value={search}
-
-        onChange={(e)=>setSearch(e.target.value)}
-
-        placeholder="Search disruption..."
-
-        className="
-        w-full
-        rounded-2xl
-        border
-        border-white/10
-        bg-white/5
-        p-5
-        outline-none
-        focus:border-red-400
-        "
-
-      />
-
-      {/* Cards */}
-
-      <div className="grid lg:grid-cols-3 gap-7">
-
-        {cards.map((item)=>(
-
-          <DisruptionCard
-
-            key={item.id}
-
-            disruption={item}
-
-          />
-
-        ))}
-
-      </div>
-
-    </main>
-
-  );
-
-}
-function DisruptionCard({
-  disruption,
-}: {
-  disruption: {
-    id: number;
-    title: string;
-    type: string;
-    description: string;
-    status: string;
-    responded: number;
-  };
-}) {
-  return (
-    <div
-      className="
-      rounded-3xl
-      border
-      border-white/10
-      bg-white/[0.04]
-      backdrop-blur-xl
-      p-7
-      hover:border-red-500/30
-      transition
-      "
-    >
-      {/* Top */}
-
-      <div className="flex justify-between items-start">
-
-        <div>
-
-          <h2 className="text-2xl font-black">
-            {disruption.title}
-          </h2>
-
-          <p className="text-slate-400 mt-1">
-            {disruption.type}
-          </p>
-
+              <CardFooter className="pt-4 border-t border-border">
+                <Button
+                  onClick={() => triggerDisruption(disruption)}
+                  disabled={loadingId !== null}
+                  variant="destructive"
+                  className="w-full font-bold text-xs tracking-widest uppercase"
+                >
+                  {loadingId === disruption.id ? "Broadcasting..." : "Trigger Event"}
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
         </div>
-
-        <span
-          className="
-          px-4
-          py-2
-          rounded-full
-          bg-yellow-500/20
-          text-yellow-300
-          font-bold
-          text-sm
-          "
-        >
-          {disruption.status}
-        </span>
-
       </div>
-
-      {/* Description */}
-
-      <div className="mt-6 rounded-2xl bg-black/20 border border-white/5 p-5">
-
-        <p className="text-slate-300 leading-7">
-          {disruption.description}
-        </p>
-
-      </div>
-
-      {/* Response Counter */}
-
-      <div className="grid grid-cols-2 gap-4 mt-6">
-
-        <Stat
-          title="Responses"
-          value={`${disruption.responded}/90`}
-        />
-
-        <Stat
-          title="Completion"
-          value={`${Math.round(
-            (disruption.responded / 90) * 100
-          )}%`}
-        />
-
-      </div>
-
-      {/* Progress */}
-
-      <div className="mt-6">
-
-        <div className="flex justify-between mb-2">
-
-          <span className="text-slate-400">
-            Team Progress
-          </span>
-
-          <span className="font-bold text-[#E8C07D]">
-            {disruption.responded}/90
-          </span>
-
-        </div>
-
-        <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden">
-
-          <div
-            className="h-full bg-gradient-to-r from-red-500 to-[#E8C07D]"
-            style={{
-              width: `${(disruption.responded / 90) * 100}%`,
-            }}
-          />
-
-        </div>
-
-      </div>
-
-      {/* Controls */}
-
-      <div className="grid grid-cols-3 gap-4 mt-8">
-
-        <button
-          className="
-          rounded-xl
-          bg-gradient-to-r
-          from-red-500
-          to-red-600
-          py-3
-          font-bold
-          hover:opacity-90
-          transition
-          "
-        >
-          Launch
-        </button>
-
-        <button
-          className="
-          rounded-xl
-          border
-          border-white/10
-          py-3
-          font-bold
-          hover:bg-white/5
-          transition
-          "
-        >
-          Preview
-        </button>
-
-        <button
-          className="
-          rounded-xl
-          bg-[#E8C07D]
-          text-black
-          py-3
-          font-bold
-          hover:opacity-90
-          transition
-          "
-        >
-          End
-        </button>
-
-      </div>
-
-    </div>
-  );
-}
-
-function Stat({
-  title,
-  value,
-}: {
-  title: string;
-  value: string;
-}) {
-  return (
-    <div
-      className="
-      rounded-2xl
-      bg-black/20
-      border
-      border-white/5
-      p-4
-      "
-    >
-      <p className="text-xs text-slate-500">
-        {title}
-      </p>
-
-      <h3 className="text-lg font-bold mt-2">
-        {value}
-      </h3>
-    </div>
-  );
-}
-function KPICard({
-  title,
-  value,
-}: {
-  title: string;
-  value: string;
-}) {
-  const isStatus = title === "Status";
-
-  return (
-    <div
-      className="
-      rounded-3xl
-      border
-      border-white/10
-      bg-white/[0.04]
-      backdrop-blur-xl
-      p-6
-      "
-    >
-      <p className="text-slate-400 text-sm">
-        {title}
-      </p>
-
-      {isStatus ? (
-        <div className="flex items-center gap-3 mt-4">
-          <span className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-          <h2 className="text-3xl font-black text-green-400">
-            {value}
-          </h2>
-        </div>
-      ) : (
-        <h2 className="text-4xl font-black text-[#E8C07D] mt-3">
-          {value}
-        </h2>
-      )}
-    </div>
-  );
+    </AppShell>
+  )
 }

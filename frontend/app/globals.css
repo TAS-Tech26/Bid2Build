@@ -1,8 +1,9 @@
 /* globals.css */
 
 
-@import 'tailwindcss';
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+
+@import 'tailwindcss';
 
 
 @theme {
@@ -21,8 +22,11 @@
     --color-popover: #0e0e11;
     --color-popover-foreground: #e5e5e5;
 
-    --color-primary: #bfff00;
+    --color-primary: #00e5ff;
     --color-primary-foreground: #09090b;
+
+    --color-accent: #ff0055;
+    --color-accent-foreground: #ffffff;
 
     --color-destructive: #ff4400;
     --color-destructive-foreground: #ffffff;
@@ -52,6 +56,38 @@
     }
 
     body {
-        @apply bg-background text-foreground font-mono antialiased overflow-hidden selection:bg-primary selection:text-primary-foreground;
+        @apply bg-background text-foreground font-mono antialiased overflow-x-hidden selection:bg-primary selection:text-primary-foreground;
     }
+}
+
+@keyframes ticker {
+    0% {transform: translateX(0);}
+    100% {transform: translateX(-50%);}
+}
+
+@keyframes pulse-dot {
+    0%, 100% {opacity: 1;}
+    50% {opacity: 0.3;}
+}
+
+@keyframes fade-up {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-ticker {
+    animation: ticker 25s linear infinite;
+}
+
+@utility animate-pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@utility animate-fade-up {
+    animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
 }

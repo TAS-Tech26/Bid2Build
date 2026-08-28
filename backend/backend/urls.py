@@ -5,12 +5,14 @@ from django.contrib import admin
 from django.urls import path
 
 from api.views import (
-    back_out_auction_view, emergency_reset_auction_view, get_all_technologies_view, get_leaderboard_view, get_room_details_view, join_auction_view, place_bid_view,
-    push_final_results_view, settle_auction_view, start_auction_view, sync_wallets_view
+    back_out_auction_view, emergency_reset_auction_view, fetch_credits, get_all_technologies_view, get_leaderboard_view, get_room_details_view, join_auction_view,
+    place_bid_view, push_final_results_view, settle_auction_view, start_auction_view, sync_wallets_view, trigger_disruption_view
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    path('api/fetchcredits/', fetch_credits, name='fetch_credits'),
 
     path('api/admin/sync-wallets/', sync_wallets_view, name = 'sync_wallets'),
     path('api/admin/start-auction/<int:tech_id>/', start_auction_view, name = 'start_auction'),
@@ -26,5 +28,7 @@ urlpatterns = [
 
     path('api/admin/end-tournament/', push_final_results_view, name = 'end_tournament'),
 
-    path('api/admin/emergency-reset/<int:tech_id>/', emergency_reset_auction_view, name = 'emergency_reset_auction')
+    path('api/admin/emergency-reset/<int:tech_id>/', emergency_reset_auction_view, name = 'emergency_reset_auction'),
+    path('api/admin/emergency-reset/<int:tech_id>/', emergency_reset_auction_view, name = 'emergency_reset_auction'),
+    path('api/admin/trigger-disruption/', trigger_disruption_view, name = 'trigger_disruption')
 ]

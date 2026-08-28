@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { X } from "lucide-react";
 
-/* ─────────────────────────────────────────────
-   Types
-───────────────────────────────────────────── */
 export type NotificationType =
   | "auction_won"
   | "outbid"
@@ -17,86 +15,73 @@ export interface NotificationItem {
   type: NotificationType;
   title: string;
   message: string;
-  /** ms before auto-dismiss. 0 = never auto-dismiss. Default 5000 */
-  duration?: number;
+  duration?: number; // 0 means stick forever
 }
 
-interface ToastProps {
+export interface ToastProps {
   item: NotificationItem;
   onDismiss: (id: string) => void;
-  index: number;
 }
 
-/* ─────────────────────────────────────────────
-   Per-type config
-───────────────────────────────────────────── */
 const CONFIG: Record<
   NotificationType,
-  { icon: string; accent: string; bg: string; border: string; label: string }
+  { icon: string; label: string; colorClass: string; bgClass: string; borderClass: string }
 > = {
   auction_won: {
     icon: "🏆",
     label: "AUCTION WON",
-    accent: "#E8C07D",
-    bg: "rgba(232,192,125,0.07)",
-    border: "rgba(232,192,125,0.28)",
+    colorClass: "text-primary",
+    bgClass: "bg-primary/10",
+    borderClass: "border-primary/30",
   },
   outbid: {
     icon: "⚡",
     label: "OUTBID",
-    accent: "#EF4444",
-    bg: "rgba(239,68,68,0.07)",
-    border: "rgba(239,68,68,0.28)",
+    colorClass: "text-destructive",
+    bgClass: "bg-destructive/10",
+    borderClass: "border-destructive/30",
   },
   market_event: {
-    icon: "📢",
+    icon: "📣",
     label: "MARKET EVENT",
-    accent: "#8B5CF6",
-    bg: "rgba(139,92,246,0.07)",
-    border: "rgba(139,92,246,0.28)",
+    colorClass: "text-accent",
+    bgClass: "bg-accent/10",
+    borderClass: "border-accent/30",
   },
   marketplace_closing: {
     icon: "🔒",
     label: "MARKETPLACE CLOSING",
-    accent: "#F59E0B",
-    bg: "rgba(245,158,11,0.07)",
-    border: "rgba(245,158,11,0.28)",
+    colorClass: "text-amber-500",
+    bgClass: "bg-amber-500/10",
+    borderClass: "border-amber-500/30",
   },
   submission_reminder: {
     icon: "📋",
     label: "SUBMISSION REMINDER",
-    accent: "#22C55E",
-    bg: "rgba(34,197,94,0.07)",
-    border: "rgba(34,197,94,0.28)",
+    colorClass: "text-blue-500",
+    bgClass: "bg-blue-500/10",
+    borderClass: "border-blue-500/30",
   },
 };
 
-/* ─────────────────────────────────────────────
-   Single Toast
-───────────────────────────────────────────── */
-function Toast({ item, onDismiss, index }: ToastProps) {
+function Toast({ item, onDismiss }: ToastProps) {
   const cfg = CONFIG[item.type];
   const duration = item.duration ?? 5000;
 
-  /* mount/unmount animation state */
   const [phase, setPhase] = useState<"enter" | "idle" | "exit">("enter");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* progress bar width (0→100 over duration) */
   const [progress, setProgress] = useState(100);
   const startRef = useRef<number>(Date.now());
-  const rafRef   = useRef<number>(0);
+  const rafRef = useRef<number>(0);
 
-  /* Enter */
   useEffect(() => {
     const t = setTimeout(() => setPhase("idle"), 10);
     return () => clearTimeout(t);
   }, []);
 
-  /* Auto-dismiss timer + progress bar */
   useEffect(() => {
     if (duration <= 0) return;
-
     startRef.current = Date.now();
 
     function tick() {
@@ -108,14 +93,12 @@ function Toast({ item, onDismiss, index }: ToastProps) {
       }
     }
     rafRef.current = requestAnimationFrame(tick);
-
     timerRef.current = setTimeout(() => dismiss(), duration);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function dismiss() {
@@ -125,123 +108,75 @@ function Toast({ item, onDismiss, index }: ToastProps) {
     setTimeout(() => onDismiss(item.id), 380);
   }
 
-  const translateX = phase === "enter" ? "translateX(120%)" : phase === "exit" ? "translateX(120%)" : "translateX(0)";
-  const opacity    = phase === "idle" ? 1 : 0;
+  const transformStyle =
+    phase === "enter"
+      ? "translate-x-[120%]"
+      : phase === "exit"
+      ? "translate-x-[120%]"
+      : "translate-x-0";
+  const opacityStyle = phase === "idle" ? "opacity-100" : "opacity-0";
 
   return (
     <div
-      style={{
-        position: "relative",
-        width: 360,
-        borderRadius: 16,
-        border: `1px solid ${cfg.border}`,
-        background: `linear-gradient(135deg, #0D1220 0%, ${cfg.bg} 100%)`,
-        backdropFilter: "blur(20px)",
-        overflow: "hidden",
-        boxShadow: `0 8px 40px rgba(0,0,0,0.5), 0 0 0 0 ${cfg.accent}20`,
-        transform: translateX,
-        opacity,
-        transition: "transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease",
-        cursor: "default",
-        userSelect: "none",
-      }}
+      className={`relative w-[360px] rounded-xl border bg-card/80 backdrop-blur-xl shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${cfg.borderClass} ${transformStyle} ${opacityStyle}`}
       role="alert"
-      aria-live="polite"
     >
-      {/* Left accent bar */}
-      <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, background: cfg.accent, borderRadius: "16px 0 0 16px" }} />
+      <div className={`absolute top-0 left-0 bottom-0 w-1 rounded-l-xl ${cfg.bgClass.replace('/10', '')}`} />
 
-      {/* Content */}
-      <div style={{ padding: "16px 18px 14px 22px", display: "flex", gap: 14, alignItems: "flex-start" }}>
-
-        {/* Icon bubble */}
-        <div style={{
-          flexShrink: 0,
-          width: 42, height: 42,
-          borderRadius: 12,
-          background: `${cfg.accent}18`,
-          border: `1px solid ${cfg.accent}30`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "1.25rem",
-        }}>
+      <div className="flex gap-3 p-4 pl-5">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-xl ${cfg.bgClass} ${cfg.borderClass} ${cfg.colorClass}`}
+        >
           {cfg.icon}
         </div>
 
-        {/* Text */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{
-              fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.12em",
-              color: cfg.accent, textTransform: "uppercase",
-            }}>
+        <div className="flex flex-1 flex-col min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${cfg.colorClass}`}>
               {cfg.label}
             </span>
             <button
               onClick={dismiss}
-              aria-label="Dismiss notification"
-              style={{
-                background: "none", border: "none", padding: "0 2px",
-                color: "#475569", cursor: "pointer", fontSize: "0.9rem", lineHeight: 1,
-                transition: "color 0.15s",
-              }}
-              onMouseOver={e => (e.currentTarget.style.color = "#e2e8f0")}
-              onMouseOut={e  => (e.currentTarget.style.color = "#475569")}
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              ✕
+              <X className="h-4 w-4" />
             </button>
           </div>
-          <p style={{ margin: "0 0 3px", fontSize: "0.88rem", fontWeight: 800, color: "#f1f5f9", lineHeight: 1.3 }}>
+          <p className="text-sm font-bold text-foreground mb-1 leading-tight">
             {item.title}
           </p>
-          <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b", lineHeight: 1.5 }}>
+          <p className="text-xs text-muted-foreground leading-snug">
             {item.message}
           </p>
         </div>
       </div>
 
-      {/* Progress bar */}
       {duration > 0 && (
-        <div style={{ height: 3, background: "rgba(255,255,255,0.05)", margin: "0 4px 4px" }}>
-          <div style={{
-            height: "100%",
-            width: `${progress}%`,
-            background: `linear-gradient(90deg, ${cfg.accent}88, ${cfg.accent})`,
-            borderRadius: 999,
-            transition: "width 0.1s linear",
-          }} />
+        <div className="mx-1 mb-1 h-[3px] overflow-hidden rounded-full bg-border/50">
+          <div
+            className={`h-full transition-all duration-100 ease-linear ${cfg.bgClass.replace('/10', '')}`}
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Toast Stack  (the main export — mount once
-   near the root of each page)
-───────────────────────────────────────────── */
 export interface NotificationStackProps {
   notifications: NotificationItem[];
   onDismiss: (id: string) => void;
 }
 
-export default function NotificationStack({ notifications, onDismiss }: NotificationStackProps) {
+export default function NotificationStack({
+  notifications,
+  onDismiss,
+}: NotificationStackProps) {
   return (
-    <div
-      aria-label="Notifications"
-      style={{
-        position: "fixed",
-        top: 100,           /* clears the sticky navbar */
-        right: 20,
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        pointerEvents: "none",
-      }}
-    >
-      {notifications.map((item, i) => (
-        <div key={item.id} style={{ pointerEvents: "auto" }}>
-          <Toast item={item} onDismiss={onDismiss} index={i} />
+    <div className="fixed top-24 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
+      {notifications.map((notification) => (
+        <div key={notification.id} className="pointer-events-auto">
+          <Toast item={notification} onDismiss={onDismiss} />
         </div>
       ))}
     </div>

@@ -1,9 +1,7 @@
 // useAuctionSocket.ts
 
 
-import { parse } from 'path';
 import {useEffect, useRef, useState} from 'react'
-import { json } from 'stream/consumers';
 
 
 interface AuctionState {
@@ -33,7 +31,7 @@ export default function useAuctionSocket(techId : number) {
         let reconnectInterval: NodeJS.Timeout
 
         const connect = () => {
-            const wsUrl = process.env.PUBLIC_WS_URL || 'ws://127.0.0.1:8002'
+            const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8002'
 
             ws.current = new WebSocket(`${wsUrl}/ws/bid/${techId}/`)
             ws.current.onmessage = (event) => {
@@ -46,6 +44,7 @@ export default function useAuctionSocket(techId : number) {
                             ...prev,
                             currentHighestBid : payload.new_highest_bid,
                             highestBidderName : payload.highest_bidder_name,
+                            endTime: payload.end_time || prev.endTime,
                             recentEvents : [`${payload.highest_bidder_name} bid ${payload.new_highest_bid}`, ...prev.recentEvents].slice(0, 5)
                         }))
 
