@@ -1,5 +1,5 @@
-// AssetDetails.jsx
-
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
     asset: {
@@ -13,125 +13,116 @@ interface Props {
     }
 }
 
-
 // Format seconds as MM:SS
 function formatTime(secs: number): string {
     if (secs <= 0) return 'CLOSED'
-
     const m = Math.floor(secs / 60).toString().padStart(2, '0')
-
     const s = (secs % 60).toString().padStart(2, '0')
-
     return `${m}:${s}`
 }
 
-
 export default function AssetDetails({asset}: Props) {
-
     return (
-
-        <div className = "space-y-6 text-white">
+        <div className="space-y-6">
             {/* Description */}
-            <div className = "rounded-3xl border border-white/10 bg-white/3 p-6">
-                <h3 className = "mb-4 text-xl font-black">
-                    About this Asset
-                </h3>
-
-                <p className = "leading-7 text-slate-400">
-                    {asset.description ?? "This strategic asset strengthens your startup during Round 2. Purchasing it unlocks additional capabilities that can improve your proposal, business model & final judging score."}
-                </p>
-            </div>
+            <Card className="bg-card/60 backdrop-blur-xl border-border">
+                <CardHeader>
+                    <CardTitle>About this Asset</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="leading-7 text-muted-foreground">
+                        {asset.description ?? "This strategic asset strengthens your startup during Round 2. Purchasing it unlocks additional capabilities that can improve your proposal, business model & final judging score."}
+                    </p>
+                </CardContent>
+            </Card>
 
             {/* Purpose */}
-            <div className = "rounded-3xl border border-white/10 bg-white/3 p-6">
-                <h3 className = "mb-4 text-xl font-black">
-                    Purpose
-                </h3>
-
-                <p className = "leading-7 text-slate-400">
-                    {asset.purpose ?? "Integrate this asset into your startup solution to solve real-world problems more effectively."}
-                </p>
-            </div>
+            <Card className="bg-card/60 backdrop-blur-xl border-border">
+                <CardHeader>
+                    <CardTitle>Purpose</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="leading-7 text-muted-foreground">
+                        {asset.purpose ?? "Integrate this asset into your startup solution to solve real-world problems more effectively."}
+                    </p>
+                </CardContent>
+            </Card>
 
             {/* Benefits */}
-            <div className = "rounded-3xl border border-white/10 bg-white/3 p-6">
-                <h3 className = "mb-4 text-xl font-black">
-                    Benefits
-                </h3>
-
-                <ul className = "space-y-3 text-slate-400">
-                    <li>• Improves feasibility of your startup.</li>
-                    <li>• Strengthens business execution.</li>
-                    <li>• Helps during market disruptions.</li>
-                    <li>• Can improve judging scores when used properly.</li>
-                </ul>
-            </div>
+            <Card className="bg-card/60 backdrop-blur-xl border-border">
+                <CardHeader>
+                    <CardTitle>Benefits</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3 text-muted-foreground">
+                        <li>• Improves feasibility of your startup.</li>
+                        <li>• Strengthens business execution.</li>
+                        <li>• Helps during market disruptions.</li>
+                        <li>• Can improve judging scores when used properly.</li>
+                    </ul>
+                </CardContent>
+            </Card>
 
             {/* Live Statistics */}
-            <div className = "rounded-3xl border border-white/10 bg-white/3 p-6">
-                <h3 className = "mb-5 text-xl font-black">
-                    Live Statistics
-                </h3>
-
-                <div className = "grid grid-cols-2 gap-4">
-                    <div className = "rounded-xl border border-white/10 p-4">
-                        <div className = "text-xs uppercase text-slate-400">
-                            Starting Price
+            <Card className="bg-card/60 backdrop-blur-xl border-border">
+                <CardHeader>
+                    <CardTitle>Live Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="rounded-xl border border-border bg-secondary/50 p-4">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                                Starting Price
+                            </div>
+                            <div className="mt-2 text-2xl font-black text-primary font-mono">
+                                {asset.price} CR
+                            </div>
                         </div>
 
-                        <div className = "mt-2 text-2xl font-black text-[#e8c07d]">
-                            {asset.price} CR
-                        </div>
-                    </div>
-
-                    <div className = "rounded-xl border border-white/10 p-4">
-                        <div className = "text-xs uppercase text-slate-400">
-                            Teams Watching
-                        </div>
-
-                        <div className = "mt-2 text-2xl font-black">
-                            {asset.teams}
-                        </div>
-                    </div>
-
-                    <div className = "rounded-xl border border-white/10 p-4">
-                        <div className = "text-xs uppercase text-slate-400">
-                            Auction Ends
+                        <div className="rounded-xl border border-border bg-secondary/50 p-4">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                                Teams Watching
+                            </div>
+                            <div className="mt-2 text-2xl font-black font-mono">
+                                {asset.teams}
+                            </div>
                         </div>
 
-                        <div className = "mt-2 text-2xl font-black text-red-500">
-                            {formatTime(asset.time)}
+                        <div className="rounded-xl border border-border bg-secondary/50 p-4">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                                Auction Ends
+                            </div>
+                            <div className="mt-2 text-2xl font-black text-destructive font-mono">
+                                {formatTime(asset.time)}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className = "rounded-xl border border-white/10 p-4">
-                        <div className = "text-xs uppercase text-slate-400">
-                            Status
-                        </div>
-
-                        <div className = "mt-2 text-xl font-bold text-emerald-500">
-                            LIVE
+                        <div className="rounded-xl border border-border bg-secondary/50 p-4">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                                Status
+                            </div>
+                            <div className="mt-2 text-xl font-black text-primary font-mono tracking-widest">
+                                LIVE
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Rules */}
-            <div className = "rounded-3xl border border-yellow-500/30 bg-yellow-500/10 p-6">
-                <h3 className = "mb-4 text-xl font-black">
-                    Auction Rules
-                </h3>
-
-                <ul className = "space-y-3 text-sm text-slate-400">
-                    <li>• Highest bid at timer expiry wins.</li>
-                    <li>• Once submitted, bids cannot be withdrawn.</li>
-                    <li>• Credits are deducted only if your team wins.</li>
-                    <li>• Purchased assets must be used in your final startup.</li>
-                </ul>
-            </div>
+            <Card className="border-amber-500/30 bg-amber-500/10">
+                <CardHeader>
+                    <CardTitle className="text-amber-500">Auction Rules</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3 text-sm text-foreground">
+                        <li>• Highest bid at timer expiry wins.</li>
+                        <li>• Once submitted, bids cannot be withdrawn.</li>
+                        <li>• Credits are deducted only if your team wins.</li>
+                        <li>• Purchased assets must be used in your final startup.</li>
+                    </ul>
+                </CardContent>
+            </Card>
         </div>
-
     )
-
 }
-

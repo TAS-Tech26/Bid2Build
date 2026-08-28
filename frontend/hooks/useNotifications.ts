@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { type NotificationItem, type NotificationType } from "./NotificationToast";
+import { type NotificationItem, type NotificationType } from "@/components/NotificationToast";
 
 let _id = 0;
 function nextId() { return `notif-${++_id}-${Date.now()}`; }

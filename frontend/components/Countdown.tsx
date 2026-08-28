@@ -2,6 +2,24 @@
 
 import { useEffect, useState } from "react";
 
+const Item = ({
+  value,
+  label,
+}: {
+  value: string;
+  label: string;
+}) => (
+  <div className="flex flex-col items-center">
+    <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-border bg-card backdrop-blur-md shadow-sm">
+      <span className="text-4xl font-black font-mono">{value}</span>
+    </div>
+
+    <span className="mt-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold">
+      {label}
+    </span>
+  </div>
+);
+
 export default function Countdown() {
   const targetDate = new Date("2026-08-29T09:00:00+05:30");
 
@@ -38,24 +56,6 @@ export default function Countdown() {
 
     return () => clearInterval(interval);
   }, []);
-
-  const Item = ({
-    value,
-    label,
-  }: {
-    value: string;
-    label: string;
-  }) => (
-    <div className="flex flex-col items-center">
-      <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
-        <span className="text-4xl font-bold">{value}</span>
-      </div>
-
-      <span className="mt-3 text-sm uppercase tracking-[0.2em] text-slate-400">
-        {label}
-      </span>
-    </div>
-  );
 
   return (
     <div className="mt-8 flex justify-center gap-6">

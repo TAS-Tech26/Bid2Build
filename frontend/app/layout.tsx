@@ -1,10 +1,14 @@
-import { Orbitron } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const orbitron = Orbitron({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["700", "800", "900"],
-  variable: "--font-orbitron",
+  variable: "--font-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export default function RootLayout({
@@ -13,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={orbitron.variable}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`}>
       <body>{children}</body>
     </html>
   );

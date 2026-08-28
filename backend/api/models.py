@@ -54,6 +54,7 @@ class Technology(models.Model):
         indexes = [models.Index(fields = ['status', 'end_time'])]
 
         constraints = [
+            models.UniqueConstraint(fields=['status'], condition=Q(status='ACTIVE'), name='unique_active_auction'),
             CheckConstraint(condition = Q(base_price__gte = 0), name = 'base_price_non_negative'),
             CheckConstraint(condition = Q(current_highest_bid__gte = 0), name = 'bid_non_negative')
         ]
@@ -64,15 +65,16 @@ class Technology(models.Model):
 
 
 class AssetPurchase(models.Model):
-    team = models.ForeignKey(Team, on_delete = models.CASCADE, related_name = 'purchased_assets')
-    technology = models.ForeignKey(Technology, on_delete = models.CASCADE, related_name = 'purchases')
+
     purchase_price = models.DecimalField(max_digits = 10, decimal_places = 2)
     timestamp = models.DateTimeField(auto_now_add = True)
+
+    team = models.ForeignKey(Team, on_delete = models.CASCADE, related_name = 'purchased_assets')
+    technology = models.ForeignKey(Technology, on_delete = models.CASCADE, related_name = 'purchases')
 
     def __str__(self):
 
         return f"{self.team.name} bought {self.technology.name} for {self.purchase_price}"
-
 
 
 class AuctionParticipant(models.Model):

@@ -1,126 +1,121 @@
-// page.tsx
-
-
 "use client";
 
-import {useState} from 'react'
-import Link from 'next/link'
-import {useRouter} from 'next/navigation'
-
-import {hubApi} from '../services/api'
-
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { hubApi } from '../services/api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
+    const [roomCode, setRoomCode] = useState('');
+    const [teamCode, setTeamCode] = useState('');
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const [roomCode, setRoomCode] = useState('')
-    const [teamCode, setTeamCode] = useState('')
-    const [error, setError] = useState("")
-
-    const router = useRouter()
+    const router = useRouter();
 
     const handleLogin = async () => {
         if (!roomCode.trim() || !teamCode.trim()) {
-            setError("Please enter both Room Code & Team PIN.")
-
-            return
+            setError("Please enter both Room Code & Team PIN.");
+            return;
         }
 
-        setError('')
+        setError('');
+        setLoading(true);
 
         try {
-            const response = await hubApi.post('api/admin/client/login/', {room_code : roomCode, team_code : teamCode})
-            console.log("login successful", response.data);
-            localStorage.setItem('token', response.data.token) //To be commented later during deployment
-            localStorage.setItem('team_name', response.data.team_name)
-            localStorage.setItem('event_name', response.data.event_name)
-
-            router.push('/marketplace')
+            const response = await hubApi.post('client/login/', {room_code : roomCode, team_code : teamCode});
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('team_name', response.data.team_name);
+            localStorage.setItem('event_name', response.data.event_name);
+            router.push('/stu_dashboard');
         } catch (error: any) {
-            console.log("LOGIN FAILED:", error)
-           
+            console.log("LOGIN FAILED:", error);
             if (error.response) {
                 if (error.response.status === 401 || error.response.status === 403) {
-                    setError(error.response.data.error || "Invalid Room Code or Team PIN")
+                    setError(error.response.data.error || "Invalid Room Code or Team PIN");
                 } else {
-                    setError("Server error. Please try again.")
+                    setError("Server error. Please try again.");
                 }
             } else if (error.request) {
-                setError("Could not connect to the authentication server.")
+                setError("Could not connect to the authentication server.");
             } else {
-                setError("An unexpected error occurred.")
+                setError("An unexpected error occurred.");
             }
+        } finally {
+            setLoading(false);
         }
     }
 
     return (
-        
-        <main className="relative min-h-screen overflow-hidden bg-[#070B18] text-white flex items-center justify-center px-6">
-            {/* BACK BUTTON */}
+        <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 relative">
             <Link
-                href = '/'
-                className = "absolute top-8 left-10 ext-sm text-slate-400 hover:text-[#E8C07D] transition"
+                href="/"
+                className="absolute top-8 left-8 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition"
             >
-                Back to Homepage
+                ← Back
             </Link>
 
-            {/* BACKGROUND */}
-            <div className="absolute inset-0 -z-10">
-                <div className = "absolute inset-0 bg-[radial-gradient(circle_at_50%_35%, rgba(232, 192, 125, 0.12), transparent_45%)]" />
-
-                <div
-                    className = "absolute inset-0 opacity-[0.035]"
-                    style = {{
-                        backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px)`,
-                        backgroundSize: "70px 70px"
-                    }}
-                />
-
-                <div className = "absolute inset-0 bg-gradient-to-b from-transparent via-[#070B18]/20 to-[#070B18]"/>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+                <div className="size-[500px] rounded-full bg-primary/10 blur-[100px]" />
             </div>
 
-            {/* LOGIN CARD */}
-            <div className = "w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-10 shadow-[0_20px_80px_rgba(0, 0, 0, 0.4)]">
-                <h1 className = "text-3xl font-bold text-center bg-gradient-to-r from-white to-[#E8C07D] bg-clip-text text-transparent mb-8">
-                    Welcome To
-
-                    <br/>
-
-                    Bid2Build
-                </h1>
-
-                <div className = 'space-y-5'>
-                    <input
-                        type = 'text'
-                        placeholder = "Room Code"
-                        value = {roomCode}
-                        onChange = {(e) => setRoomCode(e.target.value)}
-                        className = "w-full p-4 rounded-xl bg-white/[0.05] border border-white/10 text-white outline-none focus:border-[#E8C07D]/60 uppercase"
-                    />
-
-                    <input
-                        type = 'text'
-                        placeholder = "Team PIN"
-                        value = {teamCode}
-                        onChange = {(e) => setTeamCode(e.target.value)}
-                        className = "w-full p-4 rounded-xl bg-white/[0.05] border border-white/10 text-white outline-none focus:border-[#E8C07D]/60 "
-                    />
+            <Card className="w-full max-w-md bg-card/60 backdrop-blur-xl border-border shadow-2xl animate-fade-up">
+                <CardHeader className="text-center pb-8 pt-8">
+                    <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                        <span className="text-primary animate-pulse">●</span> PARTICIPANT LOGIN
+                    </div>
+                    <CardTitle className="text-3xl font-black tracking-tight">Bid2Build</CardTitle>
+                    <CardDescription className="text-muted-foreground mt-2">
+                        Enter your credentials to access the console.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6 pb-8">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold ml-1">Room Code</label>
+                            <Input
+                                type="text"
+                                placeholder="Enter Room Code"
+                                value={roomCode}
+                                onChange={(e) => setRoomCode(e.target.value)}
+                                className="h-12 bg-background border-border font-mono uppercase"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold ml-1">Team PIN</label>
+                            <Input
+                                type="password"
+                                placeholder="Enter Team PIN"
+                                value={teamCode}
+                                onChange={(e) => setTeamCode(e.target.value)}
+                                className="h-12 bg-background border-border font-mono"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleLogin();
+                                  }
+                                }}
+                            />
+                        </div>
+                    </div>
 
                     {error && (
-                        <p className = "text-red-400 text-sm">
+                        <div className="p-3 text-xs font-mono bg-destructive/10 text-destructive border border-destructive/20 rounded-md">
                             {error}
-                        </p>
+                        </div>
                     )}
 
-                    <button
-                        onClick = {handleLogin}
-                        className = "w-full mt-4 rounded-xl bg-gradient-to-r from-[#E8C07D] to-[#8B5CF6] p-4 font-bold text-black transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(232, 192, 125, 0.35)]"
+                    <Button
+                        onClick={handleLogin}
+                        disabled={loading}
+                        className="w-full h-12 font-bold uppercase tracking-widest mt-2"
                     >
-                        Enter Bid2Build
-                    </button>
-                </div>
-            </div>
+                        {loading ? "Authenticating..." : "Enter Console"}
+                    </Button>
+                </CardContent>
+            </Card>
         </main>
-    
     );
-
 }

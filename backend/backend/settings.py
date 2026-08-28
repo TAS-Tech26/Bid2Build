@@ -20,7 +20,7 @@ HUB_SERVICE_URL = env('HUB_SERVICE_URL')
 
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default = ['*'])
 
 
 INSTALLED_APPS = [
@@ -46,7 +46,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -68,19 +67,13 @@ TEMPLATES = [
 
 ASGI_APPLICATION = 'backend.asgi.application'
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default = ['http://localhost:3000', 'http://127.0.0.1:3000'])
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default = ['http://localhost:3000', 'http://127.0.0.1:3000'])
 
-DATABASES = {
-    'default':env.db()
-}
+CORS_ALLOW_ALL_ORIGINS = env.bool('CORS_ALLOW_ALL_ORIGINS', default = True)
+
+DATABASES = {'default': env.db()}
 
 AUTH_PASSWORD_VALIDATORS = [
     {

@@ -1,72 +1,33 @@
-"use client";
+// stu_dashboard/page.tsx
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import b2bApi from '../services/api';
-import { 
-  ShoppingBag, 
-  Hammer, 
-  Flame, 
-  CheckCircle2, 
-  Coins, 
-  Trophy, 
-  Briefcase, 
-  Award, 
-  ArrowRight,
-  Cpu,
-  Cloud,
-  Users,
-  TrendingUp,
-  Sparkles
-} from "lucide-react";
 
-const ownedAssets = [
-  {
-    name: "Computer Vision",
-    category: "Core Tech",
-    cost: 300,
-    marketValue: 390,
-    status: "Active",
-    iconCode: "cpu",
-  },
-  {
-    name: "Cloud Infrastructure",
-    category: "Business Resource",
-    cost: 150,
-    marketValue: 185,
-    status: "Operational",
-    iconCode: "cloud",
-  },
-  {
-    name: "Investor Network",
-    category: "Special Asset",
-    cost: 200,
-    marketValue: 260,
-    status: "Active",
-    iconCode: "users",
-  },
-];
-const teamData = {
-  rank: 12,
-  credits: 1150,
-  round: "Architect Phase",
-};
+"use client"
+
+
+import AppShell from '@/components/AppShell'
+import {Badge} from '@/components/ui/badge'
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
+
+import Link from 'next/link'
+import {useRouter} from 'next/navigation'
+import {useEffect, useState} from 'react'
+
+import b2bApi from '../services/api'
+
+import {ArrowRight, Award, Briefcase, CheckCircle2, Cloud, Coins, Cpu, Hammer, ShoppingBag, Trophy, Users} from 'lucide-react'
 
 
 export default function StudentDashboard() {
-
   const router = useRouter();
 
   const [teamName, setTeamName] = useState("");
-  const [credits, setCredits] = useState("1150");
-
+  const [credits, setCredits] = useState("0");
+  const [teamRank, setTeamRank] = useState(0);
+  const [ownedAssets, setOwnedAssets] = useState<any[]>([]);
 
   useEffect(() => {
-
-    const storedTeam = localStorage.getItem("team_name");
-    const token=localStorage.getItem("token");
+    const storedTeam = localStorage.getItem("team_name") || localStorage.getItem("teamName");
+    const token = localStorage.getItem("token");
     if(!token){
       router.push("/login");
       return;
@@ -75,479 +36,246 @@ export default function StudentDashboard() {
       router.push("/login");
       return;
     }
-    const fetch_credits=async()=>{
+    const fetchData = async () => {
       try{
-        const response=await b2bApi.get('api/fetchcredits/',{
-                   headers:{
-                    Authorization:`Bearer ${token}`,
-                  }},);
-        setCredits(response.data.available_credits);
-      }catch(e){
-        console.log("Error fetching credits, error:", e);
+        const [credRes, leadRes] = await Promise.all([
+          b2bApi.get('fetchcredits/', { headers: { Authorization: `Bearer ${token}` } }),
+          b2bApi.get('leaderboard/', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+
+        setCredits(credRes.data.available_credits);
+        
+        const leaderboard = leadRes.data.leaderboard;
+        // Find current team
+        const myTeamIndex = leaderboard.findIndex((t: any) => t.team_name === storedTeam);
+        if (myTeamIndex !== -1) {
+          const myTeam = leaderboard[myTeamIndex];
+          setTeamRank(myTeamIndex + 1);
+          
+          // Map backend secured_technologies to the ownedAssets format
+          const mappedAssets = myTeam.secured_technologies.map((tech: any) => ({
+            name: tech.name,
+            category: tech.category,
+            cost: tech.winning_bid,
+            status: "Acquired",
+            iconCode: tech.name.includes("Vision") ? "cpu" : tech.name.includes("Cloud") ? "cloud" : tech.name.includes("Investor") ? "users" : "briefcase",
+          }));
+          setOwnedAssets(mappedAssets);
+        }
+      } catch(e) {
+        console.log("Error fetching dashboard data:", e);
       }
     }
-    fetch_credits();
-    try{
+    fetchData();
+    try {
         setTeamName(storedTeam);
-    }
-    catch(error){
+    } catch(error) {
       console.log("Invalid team data", error);
-      //localStorage.removeItem("team");
-      //localStorage.removeItem("token");
-      //router.push("/login");
     }
-    
-  },[router]);
+  }, [router]);
 
   const getAssetIcon = (iconCode: string) => {
     switch (iconCode) {
-      case "cpu":
-        return <Cpu className="h-5 w-5 text-amber-400 animate-pulse" />;
-      case "cloud":
-        return <Cloud className="h-5 w-5 text-cyan-400" />;
-      case "users":
-        return <Users className="h-5 w-5 text-[#8B5CF6]" />;
-      default:
-        return <Briefcase className="h-5 w-5 text-slate-400" />;
+      case "cpu": return <Cpu className="h-5 w-5 text-amber-500" />;
+      case "cloud": return <Cloud className="h-5 w-5 text-blue-500" />;
+      case "users": return <Users className="h-5 w-5 text-purple-500" />;
+      default: return <Briefcase className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Active":
-        return (
-          <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Active
-          </span>
-        );
+        return <Badge variant="default" className="bg-primary/15 text-primary hover:bg-primary/25 border-primary/20">Active</Badge>;
       case "Operational":
-        return (
-          <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-            Operational
-          </span>
-        );
+        return <Badge variant="outline" className="text-blue-400 border-blue-500/30">Operational</Badge>;
       default:
-        return (
-          <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-[#E8C07D] border border-[#E8C07D]/20">
-            Acquired
-          </span>
-        );
+        return <Badge variant="outline" className="text-muted-foreground">Acquired</Badge>;
     }
   };
 
-
-
   return (
-
-    <main
-      className="
-      relative
-      min-h-screen
-      bg-[#070B18]
-      text-white
-      overflow-hidden
-      "
-    >
-
-
-
-      {/* BACKGROUND */}
-
-      <div className="absolute inset-0 -z-10">
-
-        <div
-          className="
-          absolute inset-0
-          bg-[radial-gradient(circle_at_50%_10%,rgba(232,192,125,0.15),transparent_45%)]
-          "
-        />
-
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:`
-            linear-gradient(rgba(255,255,255,.2) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.2) 1px, transparent 1px)
-            `,
-            backgroundSize:"70px 70px",
-          }}
-        />
-
-      </div>
-
-      <Navbar overrideCredits={credits} />
-
-      <div className="px-10 py-10">
-
-
-
-
-
-      {/* HEADER */}
-
-      <header
-        className="
-        flex
-        justify-between
-        items-center
-        mb-14
-        "
-      >
-
-
+    <AppShell role="participant" active="dashboard" overrideCredits={credits}>
+      <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">
+        
+        {/* HEADER */}
         <div>
-
-          <h1
-            className="
-            text-5xl
-            font-black
-
-            bg-gradient-to-r
-            from-white
-            to-[#E8C07D]
-
-            bg-clip-text
-            text-transparent
-            "
-          >
-            {teamName || "TEAM"}
-          </h1>
-
-
-          <p className="text-slate-400 mt-3 text-lg">
-            Welcome back, founders.
-          </p>
-
-
+          <h1 className="text-4xl font-black tracking-tight">{teamName || "TEAM"}</h1>
+          <p className="text-muted-foreground mt-1">Welcome back, founders.</p>
         </div>
 
-      </header>
-
-
-
-
-
-
-
-
-      {/* PROGRESS TIMELINE */}
-      <section className="mb-12 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl p-8">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-[#E8C07D] mb-6">
-          Venture Progress
-        </h2>
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 lg:gap-4">
-          {/* Step 1: Marketplace */}
-          <div className="flex-1 flex items-center gap-4">
-            <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
-              <ShoppingBag className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">Marketplace</p>
-              <p className="text-xs text-slate-400">Completed • Asset Bidding</p>
-            </div>
-          </div>
-
-          <div className="h-[2px] flex-1 bg-gradient-to-r from-emerald-500 to-[#E8C07D] hidden lg:block" />
-          <div className="w-[2px] h-6 bg-gradient-to-b from-emerald-500 to-[#E8C07D] ml-6 block lg:hidden" />
-
-          {/* Step 2: Build Phase */}
-          <div className="flex-1 flex items-center gap-4">
-            <div className="relative flex items-center justify-center h-12 w-12 rounded-2xl bg-[#E8C07D]/10 border border-[#E8C07D]/50 text-[#E8C07D] shadow-[0_0_20px_rgba(232,192,125,0.25)] shrink-0">
-              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-[#E8C07D] border border-[#070B18] animate-ping" />
-              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-[#E8C07D] border border-[#070B18]" />
-              <Hammer className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[#E8C07D] font-extrabold text-sm tracking-wide">Build Phase</p>
-              <p className="text-xs text-[#E8C07D]/70 font-medium">Active • Architect Phase</p>
-            </div>
-          </div>
-
-          <div className="h-[2px] flex-1 bg-gradient-to-r from-[#E8C07D]/40 to-white/5 border-t border-dashed border-white/10 hidden lg:block" />
-          <div className="w-[2px] h-6 bg-gradient-to-b from-[#E8C07D]/40 to-white/5 border-l border-dashed border-white/10 ml-6 block lg:hidden" />
-
-          {/* Step 3: Disruption Phase */}
-          <div className="flex-1 flex items-center gap-4 opacity-40">
-            <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-white/5 border border-white/10 text-slate-400 shrink-0">
-              <Flame className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-slate-400 font-semibold text-sm">Disruption Phase</p>
-              <p className="text-xs text-slate-500">Locked • Event Simulation</p>
-            </div>
-          </div>
-
-          <div className="h-[2px] flex-1 bg-white/5 border-t border-dashed border-white/10 hidden lg:block" />
-          <div className="w-[2px] h-6 bg-white/5 border-l border-dashed border-white/10 ml-6 block lg:hidden" />
-
-          {/* Step 4: Submission */}
-          <div className="flex-1 flex items-center gap-4 opacity-40">
-            <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-white/5 border border-white/10 text-slate-400 shrink-0">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-slate-400 font-semibold text-sm">Submission</p>
-              <p className="text-xs text-slate-500">Locked • Evaluation & Pitch</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-
-
-
-
-
-      {/* MAIN */}
-
-      <section
-        className="
-        grid
-        grid-cols-1
-        lg:grid-cols-[1.4fr_0.6fr]
-        gap-8
-        items-start
-        "
-      >
-
-        {/* LEFT COLUMN: TEAM OVERVIEW & ACQUIRED ASSETS */}
-        <div className="flex flex-col gap-8">
-          
-          {/* TEAM OVERVIEW CARD */}
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.01] backdrop-blur-xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-            <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-[#E8C07D]/10 blur-3xl -z-10" />
-            <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-[#8B5CF6]/5 blur-3xl -z-10" />
-
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-black bg-gradient-to-r from-white to-[#E8C07D] bg-clip-text text-transparent">
-                  Team Overview
-                </h2>
-                <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-                  Real-Time Diagnostics
-                </p>
-              </div>
-              <Award className="h-7 w-7 text-[#E8C07D] opacity-80" />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Stat 1: Credits */}
-              <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-[#E8C07D]/30 transition-all duration-300">
-                <div className="p-3 bg-[#E8C07D]/10 rounded-xl text-[#E8C07D]">
-                  <Coins className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Credits</p>
-                  <p className="text-xl font-black text-[#E8C07D] mt-1">{Number(credits).toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* Stat 2: Rank */}
-              <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-[#8B5CF6]/30 transition-all duration-300">
-                <div className="p-3 bg-[#8B5CF6]/10 rounded-xl text-[#8B5CF6]">
-                  <Trophy className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Rank</p>
-                  <p className="text-xl font-black text-[#8B5CF6] mt-1">#{teamData.rank}</p>
-                </div>
-              </div>
-
-              {/* Stat 3: Assets Owned */}
-              <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-cyan-500/30 transition-all duration-300">
-                <div className="p-3 bg-cyan-400/10 rounded-xl text-cyan-400">
-                  <Briefcase className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Assets Owned</p>
-                  <p className="text-xl font-black text-cyan-400 mt-1">{ownedAssets.length}</p>
-                </div>
-              </div>
-
-              {/* Stat 4: Auction Wins */}
-              <div className="flex items-center gap-4 bg-black/20 border border-white/5 rounded-2xl p-5 hover:border-emerald-500/30 transition-all duration-300">
-                <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
-                  <Award className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Auction Wins</p>
-                  <p className="text-xl font-black text-emerald-400 mt-1">{ownedAssets.length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ASSETS */}
-          <div
-            className="
-            rounded-3xl
-            border
-            border-white/10
-            bg-white/[0.05]
-            backdrop-blur-xl
-            p-8
-            "
-          >
-            <h2
-              className="
-              text-2xl
-              font-bold
-              text-[#E8C07D]
-              mb-6
-              "
-            >
-              Acquired Assets
+        {/* PROGRESS TIMELINE */}
+        <Card className="bg-card">
+          <CardContent className="p-6">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">
+              Venture Progress
             </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {ownedAssets.map((asset) => (
-                <div
-                  key={asset.name}
-                  className="
-                  relative
-                  overflow-hidden
-                  flex
-                  flex-col
-                  justify-between
-                  rounded-2xl
-                  bg-black/35
-                  border
-                  border-white/10
-                  p-6
-                  hover:border-[#E8C07D]/40
-                  hover:-translate-y-1
-                  hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)]
-                  transition-all
-                  duration-300
-                  "
-                >
-                  {/* Card background detail */}
-                  <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-white/[0.02] blur-lg -z-10" />
-
-                  {/* Header Row: Category Icon & Status Badge */}
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="p-2.5 bg-white/[0.04] border border-white/10 rounded-xl">
-                      {getAssetIcon(asset.iconCode)}
-                    </div>
-                    {getStatusBadge(asset.status)}
-                  </div>
-
-                  {/* Body: Asset Title & Category Tag */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold text-white tracking-wide truncate" title={asset.name}>
-                      {asset.name}
-                    </h3>
-                    <span className="inline-block mt-2 text-[10px] font-semibold text-slate-400 bg-white/5 px-2.5 py-1 rounded-md">
-                      {asset.category}
-                    </span>
-                  </div>
-
-                  {/* Footer Row: Purchase Cost vs Market Value */}
-                  <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Purchase</p>
-                      <p className="text-sm font-extrabold text-slate-300 mt-0.5">{asset.cost} <span className="text-xs text-slate-500 font-medium">CR</span></p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-[#E8C07D] font-bold uppercase tracking-wider flex items-center justify-end gap-1">
-                        Value
-                        <TrendingUp className="h-3 w-3 text-emerald-400" />
-                      </p>
-                      <p className="text-sm font-extrabold text-[#E8C07D] mt-0.5">{asset.marketValue} <span className="text-xs text-[#E8C07D]/50 font-medium">CR</span></p>
-                    </div>
-                  </div>
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 lg:gap-4">
+              <div className="flex-1 flex items-center gap-4">
+                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-primary/10 text-primary shrink-0">
+                  <ShoppingBag className="h-5 w-5" />
                 </div>
-              ))}
+                <div>
+                  <p className="font-semibold text-sm">Marketplace</p>
+                  <p className="text-xs text-muted-foreground">Completed • Asset Bidding</p>
+                </div>
+              </div>
+
+              <div className="h-0.5 flex-1 bg-border hidden lg:block" />
+
+              <div className="flex-1 flex items-center gap-4">
+                <div className="relative flex items-center justify-center h-12 w-12 rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/30">
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                  </span>
+                  <Hammer className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-primary font-bold text-sm tracking-wide">Build Phase</p>
+                  <p className="text-xs text-primary/70 font-medium">Active • Architect Phase</p>
+                </div>
+              </div>
+
+              <div className="h-0.5 flex-1 bg-border border-dashed hidden lg:block" />
+
+              <div className="flex-1 flex items-center gap-4 opacity-40">
+                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-muted text-muted-foreground shrink-0 border border-border">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-semibold text-sm">Submission</p>
+                  <p className="text-xs text-muted-foreground">Locked • Evaluation & Pitch</p>
+                </div>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-8 items-start">
+          
+          {/* LEFT COLUMN */}
+          <div className="flex flex-col gap-8">
+            
+            {/* STATS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                    <Coins className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Credits</p>
+                    <p className="text-2xl font-black font-mono mt-1">{Number(credits).toLocaleString()}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-secondary/80 border border-border rounded-xl text-foreground">
+                    <Trophy className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Rank</p>
+                    <p className="text-2xl font-black font-mono mt-1">#{teamRank || "-"}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500">
+                    <Briefcase className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Assets Owned</p>
+                    <p className="text-2xl font-black font-mono mt-1">{ownedAssets.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                    <Award className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Auction Wins</p>
+                    <p className="text-2xl font-black font-mono mt-1">{ownedAssets.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* ASSETS */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Acquired Assets</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {ownedAssets.map((asset) => (
+                    <div
+                      key={asset.name}
+                      className="flex flex-col justify-between rounded-xl border bg-card/50 p-5 transition-all hover:border-primary/40 hover:shadow-glow"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-secondary border border-border rounded-lg">
+                          {getAssetIcon(asset.iconCode)}
+                        </div>
+                        {getStatusBadge(asset.status)}
+                      </div>
+
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold tracking-tight truncate" title={asset.name}>
+                          {asset.name}
+                        </h3>
+                        <span className="inline-block mt-1 text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                          {asset.category}
+                        </span>
+                      </div>
+
+                      <div className="pt-3 border-t flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Purchase</p>
+                          <p className="text-sm font-bold font-mono mt-0.5">{asset.cost} CR</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
 
+          {/* RIGHT COLUMN */}
+          <Card className="bg-card sticky top-24">
+            <CardHeader>
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Link
+                href="/marketplace"
+                className="flex items-center justify-center gap-3 rounded-xl bg-linear-to-r from-primary to-accent hover:opacity-90 text-white py-4 font-bold transition-all shadow-glow hover:scale-[1.02]"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Enter Marketplace
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+
+              <Link
+                href="/leaderboard"
+                className="flex items-center justify-center gap-3 rounded-xl border bg-secondary hover:bg-secondary/80 py-4 font-semibold transition-all hover:scale-[1.02]"
+              >
+                <Trophy className="h-5 w-5 text-muted-foreground" />
+                View Leaderboard
+              </Link>
+            </CardContent>
+          </Card>
         </div>
-
-        {/* RIGHT COLUMN: ACTION PANEL */}
-        <div
-          className="
-          rounded-3xl
-          border
-          border-white/10
-          bg-gradient-to-br from-white/[0.04] to-white/[0.01]
-          backdrop-blur-xl
-          p-8
-          shadow-[0_20px_50px_rgba(0,0,0,0.3)]
-          "
-        >
-          <h2
-            className="
-            text-2xl
-            font-bold
-            text-[#E8C07D]
-            mb-6
-            "
-          >
-            Actions
-          </h2>
-
-          <div className="flex flex-col gap-4">
-            <Link
-              href="/marketplace"
-              className="
-              flex
-              items-center
-              justify-center
-              gap-3
-              rounded-2xl
-              bg-gradient-to-r
-              from-[#E8C07D]
-              to-[#8B5CF6]
-              py-5
-              text-lg
-              font-black
-              text-black
-              transition-all
-              duration-300
-              hover:-translate-y-1
-              hover:shadow-[0_0_40px_rgba(232,192,125,.4)]
-              "
-            >
-              <ShoppingBag className="h-5 w-5 text-black" />
-              Enter Marketplace
-              <ArrowRight className="h-5 w-5 text-black" />
-            </Link>
-
-            <Link
-              href="/leaderboard"
-              className="
-              flex
-              items-center
-              justify-center
-              gap-3
-              rounded-2xl
-              border
-              border-white/10
-              py-5
-              text-lg
-              font-semibold
-              text-slate-300
-              transition-all
-              duration-300
-              hover:bg-white/5
-              hover:text-white
-              hover:border-white/20
-              "
-            >
-              <Trophy className="h-5 w-5 text-[#8B5CF6]" />
-              View Leaderboard
-            </Link>
-          </div>
-
-        </div>
-
-      </section>
-
       </div>
-    </main>
-
+    </AppShell>
   );
 }
